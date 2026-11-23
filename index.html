@@ -33,26 +33,7 @@
       pointer-events: none;
     }
     .claw-pin.new-prize {
-      animation: pin-glow 2.2s ease-in-out infinite;
-    }
-    .pin-sparkle {
-      position: absolute;
-      top: 4px;
-      right: -5px;
-      font-size: 13px;
-      line-height: 1;
-      color: #facc15;
-      text-shadow: 0 1px 4px rgba(15, 23, 42, 0.45);
-      animation: sparkle-twinkle 1.6s ease-in-out infinite;
-      pointer-events: none;
-    }
-    @keyframes pin-glow {
-      0%, 100% { filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.28)); }
-      50% { filter: drop-shadow(0 4px 10px rgba(79, 70, 229, 0.45)); }
-    }
-    @keyframes sparkle-twinkle {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.45; transform: scale(0.75); }
+      filter: drop-shadow(0 4px 8px rgba(79, 70, 229, 0.32));
     }
     .claw-pin.selected {
       transform: scale(1.16);
@@ -187,7 +168,7 @@
     <aside id="side-panel" class="hidden md:flex md:w-96 lg:w-[410px] bg-white border-r border-slate-200 flex-col shrink-0 z-10 overflow-hidden">
       <div class="flex border-b border-slate-200 p-2 gap-1.5 bg-slate-50/70 shrink-0">
         <button id="desk-tab-list" type="button" class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition bg-white text-indigo-600 shadow-sm border border-slate-200/80">
-          화면 내 매장 (<span id="desk-list-count">0</span>)
+          근처 매장 (<span id="desk-list-count">0</span>)
         </button>
         <button id="desk-tab-fav" type="button" class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition text-slate-600 hover:bg-white/60 relative">
           즐겨찾기 (<span id="desk-fav-count">0</span>)
@@ -213,19 +194,20 @@
         </div>
       </div>
 
-      <!-- Top-Left Count Pill (Viewport-only count) -->
+      <!-- Top-Left Count Pill -->
       <div class="absolute top-3 left-3 z-[400] flex items-center gap-2 pointer-events-none">
         <div class="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-sm rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 flex items-center gap-1.5 pointer-events-auto">
           <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-          <span id="map-count-label">이 화면 매장 0곳</span>
+          <span id="map-count-label">근처 매장 0곳</span>
         </div>
       </div>
 
-      <!-- Pick Location Banner -->
-      <div id="pick-mode-banner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-[500] bg-indigo-600 text-white px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-3 max-w-[92%]">
-        <i data-lucide="map-pin" class="w-4 h-4 shrink-0"></i>
-        <span class="text-xs sm:text-sm font-medium">지도에서 신규 뽑기방 위치를 클릭하세요</span>
-        <button id="cancel-pick-btn" type="button" class="text-xs font-semibold bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-lg transition shrink-0">취소</button>
+      <!-- Pick Location Banner (Draggable Flag) -->
+      <div id="pick-mode-banner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-[500] bg-indigo-600 text-white px-3.5 py-2.5 rounded-2xl shadow-lg flex items-center gap-2.5 max-w-[94%]">
+        <i data-lucide="flag" class="w-4 h-4 shrink-0"></i>
+        <span class="text-xs font-medium leading-snug">깃발을 드래그하거나 지도를 눌러 위치를 맞춘 뒤 결정하세요</span>
+        <button id="confirm-pick-btn" type="button" class="text-xs font-bold bg-white text-indigo-700 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition shrink-0">여기로 결정</button>
+        <button id="cancel-pick-btn" type="button" class="text-xs font-semibold bg-white/20 hover:bg-white/30 px-2 py-1 rounded-lg transition shrink-0">취소</button>
       </div>
 
       <!-- Bottom-Right Map Controls -->
@@ -245,7 +227,7 @@
       </div>
 
       <!-- Mobile Bottom Sheet (for Shop Detail, Nearby List, OR Favorites — keeps map visible!) -->
-      <div id="mobile-sheet" class="hidden md:hidden absolute inset-x-0 bottom-0 z-[450] bg-white rounded-t-2xl shadow-2xl border-t border-slate-200 max-h-[54%] flex flex-col transition-all">
+      <div id="mobile-sheet" class="hidden md:hidden absolute inset-x-0 bottom-0 z-[450] bg-white rounded-t-2xl shadow-2xl border-t border-slate-200 max-h-[36%] flex flex-col transition-all">
         <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 shrink-0 relative">
           <div class="w-10 h-1 rounded-full bg-slate-300 mx-auto absolute left-1/2 -translate-x-1/2 top-1.5"></div>
           <span id="mobile-sheet-title" class="text-xs font-bold text-indigo-600 mt-1">매장 상세 정보</span>
@@ -303,7 +285,7 @@
       <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
         <div>
           <h2 class="text-base font-bold text-slate-900">신규 뽑기방 제보하기</h2>
-          <p class="text-xs text-slate-500 mt-0.5">반경 30m 이내 중복 매장은 등록할 수 없습니다.</p>
+          <p class="text-xs text-slate-500 mt-0.5">반경 10m 이내 중복 매장은 등록할 수 없습니다. (등록 후 12시간 내 삭제 가능)</p>
         </div>
         <button id="close-report-modal" type="button" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition" aria-label="모달 닫기">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -317,8 +299,8 @@
             <div id="picked-coords-text" class="text-indigo-700 font-mono mt-0.5">35.87059, 128.59802</div>
           </div>
           <button id="pick-on-map-btn" type="button" class="shrink-0 px-3 py-1.5 rounded-lg bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold shadow-sm transition flex items-center gap-1">
-            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
-            <span>지도에서 찍기</span>
+            <i data-lucide="flag" class="w-3.5 h-3.5"></i>
+            <span>지도에서 깃발로 찍기</span>
           </button>
         </div>
 
@@ -333,8 +315,15 @@
             <input id="inp-address" type="text" placeholder="예: 대구 중구 동성로2길 80" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-indigo-500 outline-none" />
           </div>
           <div>
-            <label for="inp-hours" class="block text-xs font-semibold text-slate-700 mb-1">영업시간</label>
-            <input id="inp-hours" type="text" value="24시간 영업" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-indigo-500 outline-none" />
+            <label for="inp-hours" class="block text-xs font-semibold text-slate-700 mb-1">영업시간 선택</label>
+            <select id="inp-hours" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:border-indigo-500 outline-none">
+              <option value="24시간 영업" selected>24시간 영업</option>
+              <option value="10:00 ~ 24:00">10:00 ~ 24:00</option>
+              <option value="11:00 ~ 23:00">11:00 ~ 23:00</option>
+              <option value="12:00 ~ 02:00">12:00 ~ 02:00 (심야)</option>
+              <option value="주말·공휴일 중심">주말·공휴일 중심</option>
+              <option value="영업시간 미확인">영업시간 미확인</option>
+            </select>
           </div>
         </div>
 
@@ -447,6 +436,17 @@
     </div>
   </div>
 
+  <!-- In-Page Confirm Modal -->
+  <div id="confirm-modal" class="hidden fixed inset-0 z-[1150] bg-slate-900/55 backdrop-blur-[2px] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden p-5 space-y-4">
+      <p id="confirm-modal-text" class="text-sm font-semibold text-slate-800 text-center leading-relaxed"></p>
+      <div class="flex gap-2">
+        <button id="confirm-cancel-btn" type="button" class="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
+        <button id="confirm-ok-btn" type="button" class="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition">삭제</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Banner -->
   <div id="toast" class="hidden fixed bottom-16 md:bottom-6 left-1/2 -translate-x-1/2 z-[1200] bg-slate-900 text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-full shadow-xl transition">
     알림 메시지
@@ -459,6 +459,7 @@
 
     const DEFAULT_CENTER = { lat: 35.87059, lng: 128.59802 };
     const CLOSED_REPORT_THRESHOLD = 5;
+    const SHOP_DELETE_WINDOW_MS = 12 * 60 * 60 * 1000;
     const FAV_SEEN_KEY = 'clawmap_fav_seen_v1';
 
     // Lv.1~2 identical, Lv.3+ requires 3x more EXP (1/3 speed)
@@ -497,6 +498,7 @@
 
     let kakaoMap = null;
     let userOverlay = null;
+    let pickerMarker = null;
     const overlaysById = new Map();
     let toastTimer = null;
     let isProgrammaticPan = false;
@@ -575,6 +577,11 @@
 
     function isSuspectedClosed(shop) {
       return shop.status === 'suspected_closed' || (shop.report_count || 0) >= CLOSED_REPORT_THRESHOLD;
+    }
+
+    function canDeleteOwnShop(shop) {
+      if (!state.user || !shop || shop.created_by !== state.user.id || !shop.created_at) return false;
+      return (Date.now() - new Date(shop.created_at).getTime()) <= SHOP_DELETE_WINDOW_MS;
     }
 
     function getAvgMetrics(shop) {
@@ -755,9 +762,12 @@
           </div>
 
           <form id="nickname-form" class="space-y-2">
-            <label for="inp-nickname" class="block text-xs font-semibold text-slate-700">닉네임 변경</label>
+            <div class="flex items-center justify-between">
+              <label for="inp-nickname" class="block text-xs font-semibold text-slate-700">닉네임 변경</label>
+              <span class="text-[11px] text-slate-400">최대 10글자</span>
+            </div>
             <div class="flex gap-2">
-              <input id="inp-nickname" type="text" required maxlength="16" value="${escapeHtml(state.user.nickname)}" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-indigo-500 outline-none" />
+              <input id="inp-nickname" type="text" required maxlength="10" value="${escapeHtml(state.user.nickname)}" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-indigo-500 outline-none" />
               <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition">저장</button>
             </div>
           </form>
@@ -810,7 +820,7 @@
       const { data: profile } = await sb.from('profiles').select('nickname, exp').eq('id', uid).maybeSingle();
       state.user = {
         id: uid,
-        nickname: (profile && profile.nickname) || session.user.user_metadata?.name || '뽑기유저',
+        nickname: ((profile && profile.nickname) || session.user.user_metadata?.name || '뽑기유저').slice(0, 10),
         exp: (profile && profile.exp) || 0
       };
       const [favRes, likeRes, repRes] = await Promise.all([
@@ -846,7 +856,7 @@
 
     function renderMarkers() {
       const filtered = getFilteredShops(false);
-      document.getElementById('map-count-label').textContent = `이 화면 매장 ${filtered.length}곳`;
+      document.getElementById('map-count-label').textContent = `근처 매장 ${filtered.length}곳`;
       document.getElementById('desk-list-count').textContent = filtered.length;
       document.getElementById('mob-list-count').textContent = filtered.length;
       document.getElementById('desk-fav-count').textContent = state.favorites.size;
@@ -870,8 +880,11 @@
         const scale = suspected ? 0.8 : getPinScale(reviewCount);
         const size = Math.round(36 * scale);
 
-        const { avgRating } = getAvgMetrics(shop);
-        const starPx = avgRating === '-' ? 0 : Math.round(7 + Number(avgRating) * 2.2); // 1점:9px ~ 5점:18px
+        const { avgRating, avgDifficulty } = getAvgMetrics(shop);
+        // Star size reduced to 3/4 (~7px at 1.0 to ~14px at 5.0)
+        const starPx = avgRating === '-' ? 0 : Math.round((7 + Number(avgRating) * 2.2) * 0.75);
+        // Difficulty label neatly inside bear belly
+        const bellyDiffText = avgDifficulty === '-' ? '' : Number(avgDifficulty) <= 2.3 ? '쉬움' : Number(avgDifficulty) <= 3.6 ? '보통' : '어려움';
 
         const bearSvg = `
           <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -897,6 +910,7 @@
             <circle cx="21" cy="15.2" r="1.15" fill="#FFFFFF"/>
             <ellipse cx="18" cy="18.2" rx="2.6" ry="2" fill="#FFFFFF" fill-opacity="0.92"/>
             <circle cx="18" cy="17.7" r="0.9" fill="${fill}"/>
+            ${bellyDiffText ? `<text x="18" y="27.5" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-size="3.9" font-weight="700" font-family="sans-serif">${bellyDiffText}</text>` : ''}
           </svg>`;
 
         const gachaSvg = `
@@ -905,6 +919,7 @@
             <path d="M7.2 18H28.8" stroke="#FFFFFF" stroke-width="2.2"/>
             <circle cx="18" cy="18" r="3.4" fill="#FFFFFF"/>
             <circle cx="18" cy="18" r="1.6" fill="${fill}"/>
+            ${bellyDiffText ? `<text x="18" y="25.2" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-size="3.9" font-weight="700" font-family="sans-serif">${bellyDiffText}</text>` : ''}
           </svg>`;
 
         const el = document.createElement('div');
@@ -914,7 +929,6 @@
           ${starPx > 0 ? `<span class="pin-star-badge" style="font-size:${starPx}px;">★</span>` : ''}
           <div style="width:${size}px;height:${size}px;position:relative;">
             ${isGachaOnly ? gachaSvg : bearSvg}
-            ${isNewHighlight ? '<span class="pin-sparkle">✦</span>' : ''}
           </div>
         `;
         el.addEventListener('click', (ev) => {
@@ -940,6 +954,7 @@
       const diffLabel = avgDifficulty === '-' ? '정보 없음' : Number(avgDifficulty) <= 2.3 ? '쉬움' : Number(avgDifficulty) <= 3.6 ? '보통' : '어려움';
       const suspected = isSuspectedClosed(shop);
       const alreadyReported = state.myReports.has(shop.id);
+      const canDeleteShop = canDeleteOwnShop(shop);
 
       return `
         <div class="space-y-4" data-detail-shop="${shop.id}">
@@ -958,9 +973,16 @@
               <h3 class="text-base font-bold text-slate-900 leading-snug">${escapeHtml(shop.name)}</h3>
               <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(shop.address)}</p>
             </div>
-            <button type="button" data-action="toggle-fav" data-id="${shop.id}" class="shrink-0 p-2 rounded-xl border transition ${isFav ? 'bg-rose-50 border-rose-200 text-rose-500' : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-rose-500'}" aria-label="즐겨찾기">
-              <i data-lucide="heart" class="w-4 h-4 ${isFav ? 'fill-rose-500' : ''}"></i>
-            </button>
+            <div class="flex items-center gap-1 shrink-0">
+              ${canDeleteShop ? `
+                <button type="button" data-action="delete-shop" data-id="${shop.id}" class="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold transition" title="등록 후 12시간 이내 삭제 가능">
+                  제보 삭제
+                </button>
+              ` : ''}
+              <button type="button" data-action="toggle-fav" data-id="${shop.id}" class="p-2 rounded-xl border transition ${isFav ? 'bg-rose-50 border-rose-200 text-rose-500' : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-rose-500'}" aria-label="즐겨찾기">
+                <i data-lucide="heart" class="w-4 h-4 ${isFav ? 'fill-rose-500' : ''}"></i>
+              </button>
+            </div>
           </div>
 
           <div class="grid grid-cols-3 gap-2">
@@ -1001,10 +1023,9 @@
               type="button"
               data-action="report-closed"
               data-id="${shop.id}"
-              ${alreadyReported ? 'disabled' : ''}
-              class="py-2 px-3 rounded-xl border text-xs font-semibold transition ${alreadyReported ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : 'border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600'}"
+              class="py-2 px-3 rounded-xl border text-xs font-semibold transition ${alreadyReported ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100' : 'border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600'}"
             >
-              ${alreadyReported ? '폐점 신고 완료' : '폐업/수정 신고'}
+              ${alreadyReported ? '폐점 신고 취소' : '폐업/수정 신고'}
             </button>
           </div>
 
@@ -1022,7 +1043,6 @@
           <div class="border-t border-slate-200 pt-3 space-y-3">
             <div class="flex items-center justify-between">
               <h4 class="text-xs font-bold text-slate-800">한줄 후기 (${(shop.reviews || []).length})</h4>
-              <span class="text-[10px] text-slate-400">등록 후 수정·삭제 불가</span>
             </div>
 
             <form data-action="submit-review" data-id="${shop.id}" class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
@@ -1066,6 +1086,7 @@
             <div class="space-y-2">
               ${(shop.reviews || []).length === 0 ? '<p class="text-xs text-slate-400 text-center py-3">아직 후기가 없습니다. 첫 후기를 남겨보세요!</p>' : (shop.reviews || []).map(r => {
                 const isLiked = state.likedReviews.has(r.id);
+                const isOwnReview = state.user && r.user_id === state.user.id;
                 const nickname = (r.profiles && r.profiles.nickname) || '뽑기유저';
                 const exp = (r.profiles && r.profiles.exp) || 0;
                 const lv = getLevelInfo(exp);
@@ -1085,7 +1106,12 @@
                         <img src="${escapeHtml(r.photo_url)}" alt="후기 사진" class="w-24 h-24 object-cover rounded-xl border border-slate-200 group-hover:opacity-90 transition" />
                       </button>
                     ` : ''}
-                    <div class="mt-2 flex items-center justify-end">
+                    <div class="mt-2 flex items-center justify-end gap-1.5">
+                      ${isOwnReview ? `
+                        <button type="button" data-action="delete-review" data-id="${shop.id}" data-review-id="${r.id}" class="px-2 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold transition">
+                          삭제
+                        </button>
+                      ` : ''}
                       <button type="button" data-action="toggle-review-like" data-id="${shop.id}" data-review-id="${r.id}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${isLiked ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}">
                         <i data-lucide="thumbs-up" class="w-3 h-3 ${isLiked ? 'fill-indigo-600 text-indigo-600' : ''}"></i>
                         <span>공감</span>
@@ -1137,7 +1163,7 @@
 
       if (shops.length === 0) {
         return adBannerSlot + sortBar + `
-          <div class="text-center py-10 px-4">
+          <div class="text-center py-8 px-4">
             <div class="text-3xl mb-2">🔍</div>
             <p class="text-sm font-semibold text-slate-700">${escapeHtml(emptyText)}</p>
             <p class="text-xs text-slate-500 mt-1">지도를 이동하거나 상단 '제보하기'로 매장을 등록해 보세요.</p>
@@ -1227,24 +1253,26 @@
           const onlyFav = state.deskTab === 'fav';
           panelContent.innerHTML = buildListHtml(
             getFilteredShops(onlyFav),
-            onlyFav ? '즐겨찾기한 매장이 없습니다.' : '현재 화면에 표시된 매장이 없습니다.',
+            onlyFav ? '즐겨찾기한 매장이 없습니다.' : '근처에 표시된 매장이 없습니다.',
             onlyFav
           );
         }
         panelContent.scrollTop = prevPanelScroll;
       } else {
-        // Mobile keeps the map visible! List/Fav/Detail all use mobile-sheet
         sidePanel.classList.add('hidden');
         sidePanel.classList.remove('flex');
         mapSection.classList.remove('hidden');
 
+        mobileSheet.classList.remove('max-h-[54%]', 'max-h-[36%]', 'h-[90%]', 'max-h-[90%]');
         if (state.sheetExpanded) {
-          mobileSheet.classList.remove('max-h-[54%]');
           mobileSheet.classList.add('h-[90%]', 'max-h-[90%]');
           expandBtn.textContent = '지도와 보기';
-        } else {
-          mobileSheet.classList.remove('h-[90%]', 'max-h-[90%]');
+        } else if (selectedShop) {
           mobileSheet.classList.add('max-h-[54%]');
+          expandBtn.textContent = '전체 보기';
+        } else {
+          // List & Favorites sheet height reduced to 2/3 (36%)
+          mobileSheet.classList.add('max-h-[36%]');
           expandBtn.textContent = '전체 보기';
         }
 
@@ -1256,11 +1284,11 @@
           mobileSheetBody.innerHTML = buildDetailHtml(selectedShop, false);
         } else if (state.mobTab === 'list' || state.mobTab === 'fav') {
           const onlyFav = state.mobTab === 'fav';
-          mobileSheetTitle.textContent = onlyFav ? '즐겨찾기 매장' : '이 화면 주변 매장';
+          mobileSheetTitle.textContent = onlyFav ? '즐겨찾기 매장' : '근처 매장';
           mobileSheet.classList.remove('hidden');
           mobileSheetBody.innerHTML = buildListHtml(
             getFilteredShops(onlyFav),
-            onlyFav ? '즐겨찾기한 매장이 없습니다.' : '현재 화면에 표시된 매장이 없습니다.',
+            onlyFav ? '즐겨찾기한 매장이 없습니다.' : '근처에 표시된 매장이 없습니다.',
             onlyFav
           );
         } else {
@@ -1359,12 +1387,51 @@
       }
     }
 
+    let pendingConfirmAction = null;
+    function askConfirm(message, onConfirm) {
+      document.getElementById('confirm-modal-text').textContent = message;
+      pendingConfirmAction = onConfirm;
+      document.getElementById('confirm-modal').classList.remove('hidden');
+    }
+
+    async function deleteReview(reviewId, shopId) {
+      if (!state.user) return;
+      askConfirm('작성한 후기를 삭제하시겠습니까?', async () => {
+        const { error } = await sb.from('reviews').delete().eq('id', reviewId).eq('user_id', state.user.id);
+        if (error) {
+          return showToast('후기 삭제 실패: ' + (error.message || error.code || '오류'));
+        }
+        showToast('후기가 삭제되었습니다.');
+        await loadShopsFromSupabase();
+      });
+    }
+
+    async function deleteOwnShop(shopId) {
+      if (!state.user) return;
+      askConfirm('등록한 매장을 삭제하시겠습니까?', async () => {
+        const { error } = await sb.from('shops').delete().eq('id', shopId).eq('created_by', state.user.id);
+        if (error) {
+          return showToast('매장 삭제 실패 (12시간 이내 본인 제보만 삭제 가능)');
+        }
+        state.selectedShopId = null;
+        showToast('매장 제보가 삭제되었습니다.');
+        await loadShopsFromSupabase();
+      });
+    }
+
     async function reportShopClosed(shopId) {
+      const uid = state.user.id;
       if (state.myReports.has(shopId)) {
-        showToast('이미 신고한 매장입니다. (취소 불가)');
+        const { error } = await sb.from('shop_reports').delete().eq('shop_id', shopId).eq('user_id', uid);
+        if (error) {
+          showToast('신고 취소 중 오류가 발생했습니다.');
+          return;
+        }
+        state.myReports.delete(shopId);
+        showToast('폐점 신고가 취소되었습니다.');
+        await loadShopsFromSupabase();
         return;
       }
-      const uid = state.user.id;
       const { error } = await sb.from('shop_reports').insert({
         shop_id: shopId,
         user_id: uid,
@@ -1381,7 +1448,7 @@
         return;
       }
       state.myReports.add(shopId);
-      showToast('폐업/수정 신고가 접수되었습니다. (취소 불가)');
+      showToast('폐업/수정 신고가 접수되었습니다.');
       await loadShopsFromSupabase();
     }
 
@@ -1482,6 +1549,11 @@
       } else if (action === 'toggle-review-like') {
         const reviewId = btn.getAttribute('data-review-id');
         requireKakaoAuth('후기 공감은 카카오 로그인이 필요합니다.', () => toggleReviewLike(reviewId, id));
+      } else if (action === 'delete-review') {
+        const reviewId = btn.getAttribute('data-review-id');
+        requireKakaoAuth('후기 삭제는 카카오 로그인이 필요합니다.', () => deleteReview(reviewId, id));
+      } else if (action === 'delete-shop') {
+        requireKakaoAuth('매장 삭제는 카카오 로그인이 필요합니다.', () => deleteOwnShop(id));
       } else if (action === 'report-closed') {
         requireKakaoAuth('폐업/수정 신고는 카카오 로그인이 필요합니다.', () => reportShopClosed(id));
       }
@@ -1548,6 +1620,54 @@
       );
     }
 
+    function createFlagMarkerImage() {
+      const svg = encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="44" viewBox="0 0 40 44">
+          <ellipse cx="20" cy="40" rx="7" ry="2.5" fill="rgba(15,23,42,0.28)"/>
+          <rect x="18" y="6" width="3.5" height="34" rx="1.75" fill="#1E293B"/>
+          <path d="M21 7 L37 13.5 L21 20 Z" fill="#EF4444" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
+          <circle cx="19.75" cy="5.5" r="2.5" fill="#F59E0B"/>
+        </svg>
+      `);
+      const size = new window.kakao.maps.Size(40, 44);
+      const option = { offset: new window.kakao.maps.Point(20, 40) };
+      return new window.kakao.maps.MarkerImage('data:image/svg+xml;charset=utf-8,' + svg, size, option);
+    }
+
+    function startPickLocationMode() {
+      closeReportModal();
+      state.pickLocationMode = true;
+      if (window.innerWidth < 768) { state.mobTab = 'map'; renderPanels(); }
+      document.getElementById('pick-mode-banner').classList.remove('hidden');
+
+      if (!kakaoMap || !window.kakao || !window.kakao.maps) return;
+      const startPos = new window.kakao.maps.LatLng(state.pickedCoords.lat, state.pickedCoords.lng);
+      if (pickerMarker) pickerMarker.setMap(null);
+      pickerMarker = new window.kakao.maps.Marker({
+        position: startPos,
+        draggable: true,
+        image: createFlagMarkerImage(),
+        zIndex: 20
+      });
+      pickerMarker.setMap(kakaoMap);
+      window.kakao.maps.event.addListener(pickerMarker, 'dragend', () => {
+        const pos = pickerMarker.getPosition();
+        state.pickedCoords = { lat: pos.getLat(), lng: pos.getLng() };
+      });
+    }
+
+    function endPickLocationMode(openModal) {
+      state.pickLocationMode = false;
+      document.getElementById('pick-mode-banner').classList.add('hidden');
+      if (pickerMarker) {
+        const pos = pickerMarker.getPosition();
+        state.pickedCoords = { lat: pos.getLat(), lng: pos.getLng() };
+        pickerMarker.setMap(null);
+        pickerMarker = null;
+      }
+      if (openModal) openReportModal(true);
+    }
+
     function openReportModal(preserveCoords = false) {
       if (!preserveCoords) state.pickedCoords = getMapCenterObj();
       document.getElementById('picked-coords-text').textContent = `${state.pickedCoords.lat.toFixed(5)}, ${state.pickedCoords.lng.toFixed(5)}`;
@@ -1603,10 +1723,7 @@
           if (!state.pickLocationMode) return;
           const latlng = mouseEvent.latLng;
           state.pickedCoords = { lat: latlng.getLat(), lng: latlng.getLng() };
-          state.pickLocationMode = false;
-          document.getElementById('pick-mode-banner').classList.add('hidden');
-          openReportModal(true);
-          showToast('위치가 선택되었습니다.');
+          if (pickerMarker) pickerMarker.setPosition(latlng);
         });
         window.kakao.maps.event.addListener(kakaoMap, 'idle', () => {
           if (isProgrammaticPan) return;
@@ -1726,6 +1843,10 @@
         e.preventDefault();
         const newNick = document.getElementById('inp-nickname').value.trim();
         if (!newNick) return;
+        if (newNick.length > 10) {
+          showToast('닉네임은 10글자 이내로 입력해 주세요.');
+          return;
+        }
         const { error } = await sb.from('profiles').update({ nickname: newNick }).eq('id', state.user.id);
         if (error) return showToast('닉네임 변경 실패: ' + (error.message || '오류'));
         state.user.nickname = newNick;
@@ -1735,45 +1856,45 @@
         await loadShopsFromSupabase();
       });
 
+      document.getElementById('inp-hours').addEventListener('change', (e) => {
+        document.getElementById('inp-24h').checked = e.target.value === '24시간 영업';
+      });
+      document.getElementById('inp-24h').addEventListener('change', (e) => {
+        if (e.target.checked) document.getElementById('inp-hours').value = '24시간 영업';
+      });
+
       document.getElementById('open-report-btn').addEventListener('click', () => {
         requireKakaoAuth('신규 매장 제보는 카카오 로그인이 필요합니다.', () => openReportModal(false));
       });
       document.getElementById('close-report-modal').addEventListener('click', closeReportModal);
       document.getElementById('cancel-report-btn').addEventListener('click', closeReportModal);
-      document.getElementById('pick-on-map-btn').addEventListener('click', () => {
-        closeReportModal();
-        state.pickLocationMode = true;
-        if (window.innerWidth < 768) { state.mobTab = 'map'; renderPanels(); }
-        document.getElementById('pick-mode-banner').classList.remove('hidden');
+      document.getElementById('pick-on-map-btn').addEventListener('click', startPickLocationMode);
+      document.getElementById('confirm-pick-btn').addEventListener('click', () => {
+        endPickLocationMode(true);
+        showToast('위치가 선택되었습니다.');
       });
-      document.getElementById('cancel-pick-btn').addEventListener('click', () => {
-        state.pickLocationMode = false;
-        document.getElementById('pick-mode-banner').classList.add('hidden');
-        openReportModal(true);
-      });
+      document.getElementById('cancel-pick-btn').addEventListener('click', () => endPickLocationMode(true));
 
       document.getElementById('report-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('inp-name').value.trim();
         if (!name || !state.user) return;
 
-        // Duplicate prevention check (within 30m OR same name within 100m)
-        const normNewName = name.replace(/\s+/g, '').toLowerCase();
+        // Duplicate prevention check (within 10m)
         const duplicate = state.shops.find(s => {
           if (s.status === 'closed') return false;
           const dist = getDistanceMeters(s.lat, s.lng, state.pickedCoords.lat, state.pickedCoords.lng);
-          const normOld = (s.name || '').replace(/\s+/g, '').toLowerCase();
-          return dist < 30 || (dist < 100 && normOld === normNewName);
+          return dist < 10;
         });
         if (duplicate) {
-          showToast(`이미 반경 30m 이내에 '${duplicate.name}' 매장이 등록되어 있습니다.`);
+          showToast(`이미 반경 10m 이내에 '${duplicate.name}' 매장이 등록되어 있습니다.`);
           closeReportModal();
           selectShop(duplicate.id, true);
           return;
         }
 
         const address = document.getElementById('inp-address').value.trim() || '사용자 제보 위치';
-        const hours = document.getElementById('inp-hours').value.trim() || '영업시간 미확인';
+        const hours = document.getElementById('inp-hours').value || '영업시간 미확인';
         const is_24h = document.getElementById('inp-24h').checked;
         const pinColorEl = document.querySelector('input[name="pin_color"]:checked');
         const pin_color = pinColorEl ? pinColorEl.value : '#1D1D1F';
@@ -1815,6 +1936,17 @@
           options: { redirectTo: window.location.origin + window.location.pathname }
         });
         if (error) showToast('카카오 로그인 연결 중 오류가 발생했습니다.');
+      });
+
+      document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
+        pendingConfirmAction = null;
+        document.getElementById('confirm-modal').classList.add('hidden');
+      });
+      document.getElementById('confirm-ok-btn').addEventListener('click', async () => {
+        const fn = pendingConfirmAction;
+        pendingConfirmAction = null;
+        document.getElementById('confirm-modal').classList.add('hidden');
+        if (fn) await fn();
       });
 
       document.getElementById('close-photo-modal').addEventListener('click', () => document.getElementById('photo-modal').classList.add('hidden'));
