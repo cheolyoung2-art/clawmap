@@ -16,49 +16,39 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .claw-pin {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 38px;
-      height: 38px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      border: 2.5px solid #ffffff;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.28);
       cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    .claw-pin-inner {
-      transform: rotate(45deg);
-      font-size: 16px;
-      line-height: 1;
+      filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.28));
+      transition: transform 0.15s ease, filter 0.15s ease;
     }
     .claw-pin.new-prize {
       animation: pin-glow 2.2s ease-in-out infinite;
     }
     .pin-sparkle {
       position: absolute;
-      top: -5px;
+      top: -4px;
       right: -5px;
       font-size: 13px;
       line-height: 1;
       color: #facc15;
       text-shadow: 0 1px 4px rgba(15, 23, 42, 0.45);
-      transform: rotate(45deg);
       animation: sparkle-twinkle 1.6s ease-in-out infinite;
       pointer-events: none;
     }
     @keyframes pin-glow {
-      0%, 100% { box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35), 0 0 0 0 rgba(250, 204, 21, 0.45); }
-      50% { box-shadow: 0 6px 16px rgba(79, 70, 229, 0.55), 0 0 0 6px rgba(250, 204, 21, 0); }
+      0%, 100% { filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.28)); }
+      50% { filter: drop-shadow(0 4px 10px rgba(79, 70, 229, 0.45)); }
     }
     @keyframes sparkle-twinkle {
-      0%, 100% { opacity: 1; transform: rotate(45deg) scale(1); }
-      50% { opacity: 0.45; transform: rotate(45deg) scale(0.75); }
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.75); }
     }
     .claw-pin.selected {
-      transform: rotate(-45deg) scale(1.15);
-      box-shadow: 0 6px 18px rgba(79, 70, 229, 0.5);
+      transform: scale(1.16);
+      filter: drop-shadow(0 6px 12px rgba(79, 70, 229, 0.45));
     }
     @keyframes pulse-ring {
       0% { transform: scale(0.9); opacity: 0.75; }
@@ -645,21 +635,53 @@
 
       filtered.forEach(shop => {
         const suspected = isSuspectedClosed(shop);
-        const bg = suspected ? '#64748b' : (shop.has_new_prize ? '#4f46e5' : '#0ea5e9');
-        const emoji = (shop.machines || []).includes('가챠/캡슐') && !(shop.machines || []).includes('대형 크레인') ? '💊' : '🧸';
+        const isSelected = shop.id === state.selectedShopId;
+        const fill = suspected ? '#94A3B8' : (isSelected ? '#4F46E5' : '#1D1D1F');
+        const isGachaOnly = (shop.machines || []).includes('가챠/캡슐') && !(shop.machines || []).includes('대형 크레인');
         const isNewHighlight = Boolean(shop.has_new_prize && !suspected);
         const scale = suspected ? 0.8 : getPinScale((shop.reviews || []).length);
-        const size = Math.round(38 * scale);
-        const fontSize = Math.round(16 * scale);
-        const isSelected = shop.id === state.selectedShopId;
+        const size = Math.round(36 * scale);
+
+        const bearSvg = `
+          <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="#FFFFFF" stroke-width="2.4" stroke-linejoin="round">
+              <circle cx="10" cy="10" r="4.2" fill="${fill}"/>
+              <circle cx="26" cy="10" r="4.2" fill="${fill}"/>
+              <circle cx="18" cy="16.5" r="8.8" fill="${fill}"/>
+              <ellipse cx="18" cy="27" rx="7.2" ry="5.8" fill="${fill}"/>
+              <circle cx="10.8" cy="25" r="2.8" fill="${fill}"/>
+              <circle cx="25.2" cy="25" r="2.8" fill="${fill}"/>
+              <circle cx="13" cy="31" r="2.8" fill="${fill}"/>
+              <circle cx="23" cy="31" r="2.8" fill="${fill}"/>
+            </g>
+            <circle cx="10" cy="10" r="4.2" fill="${fill}"/>
+            <circle cx="26" cy="10" r="4.2" fill="${fill}"/>
+            <circle cx="18" cy="16.5" r="8.8" fill="${fill}"/>
+            <ellipse cx="18" cy="27" rx="7.2" ry="5.8" fill="${fill}"/>
+            <circle cx="10.8" cy="25" r="2.8" fill="${fill}"/>
+            <circle cx="25.2" cy="25" r="2.8" fill="${fill}"/>
+            <circle cx="13" cy="31" r="2.8" fill="${fill}"/>
+            <circle cx="23" cy="31" r="2.8" fill="${fill}"/>
+            <circle cx="15" cy="15.2" r="1.15" fill="#FFFFFF"/>
+            <circle cx="21" cy="15.2" r="1.15" fill="#FFFFFF"/>
+            <ellipse cx="18" cy="18.2" rx="2.6" ry="2" fill="#FFFFFF" fill-opacity="0.92"/>
+            <circle cx="18" cy="17.7" r="0.9" fill="${fill}"/>
+          </svg>`;
+
+        const gachaSvg = `
+          <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="18" cy="18" r="12" fill="${fill}" stroke="#FFFFFF" stroke-width="2.4"/>
+            <path d="M7.2 18H28.8" stroke="#FFFFFF" stroke-width="2.2"/>
+            <circle cx="18" cy="18" r="3.4" fill="#FFFFFF"/>
+            <circle cx="18" cy="18" r="1.6" fill="${fill}"/>
+          </svg>`;
 
         const el = document.createElement('div');
         el.className = `claw-pin ${isNewHighlight ? 'new-prize' : ''} ${isSelected ? 'selected' : ''}`;
-        el.style.background = bg;
         el.style.width = `${size}px`;
         el.style.height = `${size}px`;
-        if (suspected) el.style.opacity = '0.78';
-        el.innerHTML = `<span class="claw-pin-inner" style="font-size:${fontSize}px;">${emoji}</span>${isNewHighlight ? '<span class="pin-sparkle">✦</span>' : ''}`;
+        if (suspected) el.style.opacity = '0.8';
+        el.innerHTML = `${isGachaOnly ? gachaSvg : bearSvg}${isNewHighlight ? '<span class="pin-sparkle">✦</span>' : ''}`;
         el.addEventListener('click', (ev) => {
           ev.stopPropagation();
           if (state.pickLocationMode) return;
@@ -987,6 +1009,23 @@
       renderPanels();
     }
 
+    function panToShopVisibleCenter(shop) {
+      if (!kakaoMap || !window.kakao || !window.kakao.maps) return;
+      const target = new window.kakao.maps.LatLng(shop.lat, shop.lng);
+      if (window.innerWidth < 768) {
+        const mapEl = document.getElementById('map');
+        const proj = kakaoMap.getProjection();
+        if (mapEl && proj && typeof proj.pointFromCoords === 'function' && typeof proj.coordsFromPoint === 'function') {
+          const pt = proj.pointFromCoords(target);
+          const offsetY = Math.round(mapEl.clientHeight * 0.27);
+          const shifted = proj.coordsFromPoint(new window.kakao.maps.Point(pt.x, pt.y + offsetY));
+          kakaoMap.panTo(shifted);
+          return;
+        }
+      }
+      kakaoMap.panTo(target);
+    }
+
     function selectShop(shopId, panMap = true) {
       state.selectedShopId = shopId;
       const shop = state.shops.find(s => s.id === shopId);
@@ -995,8 +1034,8 @@
         renderAll();
         setTimeout(() => {
           kakaoMap.relayout();
-          kakaoMap.panTo(new window.kakao.maps.LatLng(shop.lat, shop.lng));
-        }, 60);
+          panToShopVisibleCenter(shop);
+        }, 80);
       } else {
         renderAll();
       }
