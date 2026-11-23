@@ -611,11 +611,11 @@
     async function loadShopsFromSupabase() {
       const { data, error } = await sb
         .from('shops')
-        .select('*, reviews(*, profiles(nickname, exp))')
+        .select('*, reviews(*, profiles!reviews_user_id_fkey(nickname, exp))')
         .order('created_at', { ascending: false });
 
       if (error) {
-        showToast('매장 데이터를 불러오는 중 오류가 발생했습니다.');
+        console.error('Load shops error:', error); showToast('불러오기 오류: ' + (error.message || error.code || '알 수 없음'));
         return;
       }
       state.shops = (data || []).map(shop => ({
