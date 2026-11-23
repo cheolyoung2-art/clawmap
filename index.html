@@ -18,18 +18,26 @@
     .claw-pin {
       position: relative;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-end;
       cursor: pointer;
       filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.28));
       transition: transform 0.15s ease, filter 0.15s ease;
+    }
+    .pin-star-badge {
+      line-height: 1;
+      color: #f59e0b;
+      text-shadow: 0 1px 2px #ffffff, 0 -1px 2px #ffffff, 1px 0 2px #ffffff, -1px 0 2px #ffffff;
+      margin-bottom: -2px;
+      pointer-events: none;
     }
     .claw-pin.new-prize {
       animation: pin-glow 2.2s ease-in-out infinite;
     }
     .pin-sparkle {
       position: absolute;
-      top: -4px;
+      top: 4px;
       right: -5px;
       font-size: 13px;
       line-height: 1;
@@ -81,27 +89,34 @@
     }
   </style>
 </head>
-<body class="h-[100dvh] w-screen overflow-hidden flex flex-col bg-slate-50 text-slate-900 touch-manipulation select-none sm:select-auto">
+<body class="h-[100dvh] w-screen overflow-hidden flex flex-col bg-slate-50 text-slate-900 touch-manipulation">
 
   <!-- Top Header -->
   <header class="bg-white border-b border-slate-200 px-3 sm:px-4 py-2.5 flex items-center gap-2 shrink-0 z-20">
-    <div class="flex items-center gap-2 shrink-0">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-fuchsia-500 flex items-center justify-center text-white text-lg shadow-sm">
+    <!-- Left-most App Icon Button -> Opens Profile / Nickname / EXP Modal -->
+    <button
+      id="open-profile-btn"
+      type="button"
+      class="flex items-center gap-2 shrink-0 text-left rounded-xl hover:bg-slate-100 p-1 -m-1 transition"
+      title="내 프로필 · 레벨 · 닉네임 변경"
+    >
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-fuchsia-500 flex items-center justify-center text-white text-lg shadow-sm relative">
         🕹️
+        <span id="profile-alarm-dot" class="hidden absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-500 border-2 border-white"></span>
       </div>
-      <div class="leading-tight hidden sm:block">
+      <div class="leading-tight hidden sm:block pr-1">
         <h1 class="font-bold text-base tracking-tight text-slate-900">뽑기맵</h1>
-        <p class="text-[11px] text-slate-500">주변 뽑기방·경품·기계 정보</p>
+        <p class="text-[11px] text-slate-500">내 프로필·레벨 보기</p>
       </div>
-    </div>
+    </button>
 
     <!-- Search Input -->
-    <div class="relative flex-1 max-w-md">
+    <div class="relative flex-1 max-w-md min-w-0">
       <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
       <input
         id="search-input"
         type="text"
-        placeholder="매장명, 경품(산리오·포켓몬), 지역 검색..."
+        placeholder="매장명, 경품, 지역 검색..."
         class="w-full pl-9 pr-8 py-2 text-sm bg-slate-100 hover:bg-slate-200/70 focus:bg-white border border-transparent focus:border-indigo-400 rounded-xl outline-none transition"
       />
       <button id="clear-search-btn" type="button" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5" aria-label="검색어 지우기">
@@ -109,12 +124,24 @@
       </button>
     </div>
 
+    <!-- Favorite Review Alarm Button -->
+    <button
+      id="fav-alarm-btn"
+      type="button"
+      class="hidden relative shrink-0 p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+      title="관심 매장 새 후기 알림"
+      aria-label="관심 매장 새 후기 알림"
+    >
+      <i data-lucide="bell" class="w-4 h-4"></i>
+      <span id="fav-alarm-badge" class="hidden absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">0</span>
+    </button>
+
     <!-- Kakao Auth Area -->
     <div id="auth-header-area" class="shrink-0 flex items-center gap-1.5">
       <button
         id="header-login-btn"
         type="button"
-        class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-[#FEE500] hover:bg-[#FDD800] active:scale-[0.98] text-[#191919] text-xs font-bold shadow-sm transition"
+        class="inline-flex items-center gap-1 px-2.5 sm:px-3 py-2 rounded-xl bg-[#FEE500] hover:bg-[#FDD800] active:scale-[0.98] text-[#191919] text-xs font-bold shadow-sm transition"
       >
         <span>💬</span>
         <span class="hidden sm:inline">카카오</span><span>로그인</span>
@@ -123,12 +150,11 @@
         id="header-user-btn"
         type="button"
         class="hidden items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition"
-        title="로그아웃"
+        title="내 프로필 / 로그아웃"
       >
         <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
         <span id="header-user-level" class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700">Lv.1</span>
-        <span id="header-user-name">뽑기유저</span>
-        <span class="text-[10px] text-slate-400">로그아웃</span>
+        <span id="header-user-name" class="max-w-[70px] truncate">뽑기유저</span>
       </button>
     </div>
 
@@ -143,11 +169,10 @@
     </button>
   </header>
 
-  <!-- Filter Bar -->
-  <div class="bg-white border-b border-slate-200 px-3 sm:px-4 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 z-10">
-    <div id="filter-chips" class="flex items-center gap-1.5">
+  <!-- Filter Bar (Touch & Mouse Drag Scrollable) -->
+  <div id="filter-scroll-bar" class="bg-white border-b border-slate-200 px-3 sm:px-4 py-2 overflow-x-auto no-scrollbar touch-pan-x shrink-0 z-10 cursor-grab active:cursor-grabbing select-none">
+    <div id="filter-chips" class="inline-flex items-center gap-1.5 w-max">
       <button type="button" data-filter="all" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-indigo-600 text-white shadow-sm">전체</button>
-      <button type="button" data-filter="card" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200">💳 카드결제</button>
       <button type="button" data-filter="24h" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200">🌙 24시간</button>
       <button type="button" data-filter="newPrize" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200">✨ 신상 경품</button>
       <button type="button" data-filter="large" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200">🧸 대형 인형</button>
@@ -158,42 +183,41 @@
   <!-- Main Content -->
   <main class="flex-1 flex relative overflow-hidden">
 
-    <!-- Desktop Sidebar / Mobile Full-Screen List & Favorites Panel -->
+    <!-- Desktop Sidebar -->
     <aside id="side-panel" class="hidden md:flex md:w-96 lg:w-[410px] bg-white border-r border-slate-200 flex-col shrink-0 z-10 overflow-hidden">
-      <div class="hidden md:flex border-b border-slate-200 p-2 gap-1.5 bg-slate-50/70 shrink-0">
+      <div class="flex border-b border-slate-200 p-2 gap-1.5 bg-slate-50/70 shrink-0">
         <button id="desk-tab-list" type="button" class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition bg-white text-indigo-600 shadow-sm border border-slate-200/80">
-          주변 매장 (<span id="desk-list-count">0</span>)
+          화면 내 매장 (<span id="desk-list-count">0</span>)
         </button>
-        <button id="desk-tab-fav" type="button" class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition text-slate-600 hover:bg-white/60">
+        <button id="desk-tab-fav" type="button" class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition text-slate-600 hover:bg-white/60 relative">
           즐겨찾기 (<span id="desk-fav-count">0</span>)
+          <span id="desk-fav-dot" class="hidden inline-block w-1.5 h-1.5 rounded-full bg-rose-500 ml-1 align-middle"></span>
         </button>
       </div>
 
-      <div id="panel-content" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
-        <!-- Dynamically rendered -->
-      </div>
+      <div id="panel-content" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3"></div>
     </aside>
 
     <!-- Map Area -->
     <section id="map-section" class="flex-1 relative flex flex-col overflow-hidden">
-      <div id="map" class="w-full h-full bg-slate-100" style="min-height: 480px;"></div>
+      <div id="map" class="w-full h-full bg-slate-100" style="min-height: 300px;"></div>
 
-      <!-- Kakao Map Domain Fallback Notice (shown only if Kakao SDK fails to load on unregistered domain) -->
+      <!-- Kakao Map Domain Fallback Notice -->
       <div id="map-error-overlay" class="hidden absolute inset-0 z-[350] bg-slate-100/95 flex items-center justify-center p-6 text-center">
         <div class="bg-white border border-slate-200 rounded-2xl shadow-lg p-5 max-w-sm space-y-2">
           <div class="text-2xl">🗺️</div>
           <h3 class="text-sm font-bold text-slate-900">카카오맵 도메인 등록이 필요합니다</h3>
           <p class="text-xs text-slate-600 leading-relaxed">
-            카카오디벨로퍼스 → <b>플랫폼 키</b> → <b>Default JS Key 수정</b>에서 현재 접속 중인 웹 주소(예: <code>https://your-app.vercel.app</code>)를 <b>JavaScript SDK 도메인</b>에 등록하면 지도가 바로 표시됩니다.
+            카카오디벨로퍼스 → <b>플랫폼 키</b> → <b>Default JS Key 수정</b>에서 현재 접속 중인 웹 주소를 <b>JavaScript SDK 도메인</b>에 등록하면 지도가 바로 표시됩니다.
           </p>
         </div>
       </div>
 
-      <!-- Top-Left Count Pill -->
+      <!-- Top-Left Count Pill (Viewport-only count) -->
       <div class="absolute top-3 left-3 z-[400] flex items-center gap-2 pointer-events-none">
         <div class="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-sm rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 flex items-center gap-1.5 pointer-events-auto">
           <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-          <span id="map-count-label">불러오는 중...</span>
+          <span id="map-count-label">이 화면 매장 0곳</span>
         </div>
       </div>
 
@@ -204,7 +228,7 @@
         <button id="cancel-pick-btn" type="button" class="text-xs font-semibold bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-lg transition shrink-0">취소</button>
       </div>
 
-      <!-- Bottom-Right Map Controls (Zoom + Current Location) -->
+      <!-- Bottom-Right Map Controls -->
       <div class="absolute bottom-4 right-3 z-[400] flex flex-col items-end gap-2">
         <div class="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-md rounded-xl overflow-hidden flex flex-col">
           <button id="zoom-in-btn" type="button" class="w-10 h-10 flex items-center justify-center text-slate-700 hover:bg-slate-100 active:bg-slate-200 border-b border-slate-200 transition" aria-label="지도 확대">
@@ -220,16 +244,21 @@
         </button>
       </div>
 
-      <!-- Mobile Bottom Sheet for Selected Shop -->
-      <div id="mobile-sheet" class="hidden md:hidden absolute inset-x-0 bottom-0 z-[450] bg-white rounded-t-2xl shadow-2xl border-t border-slate-200 max-h-[60%] flex flex-col">
-        <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 shrink-0">
-          <div class="w-10 h-1 rounded-full bg-slate-300 mx-auto absolute left-1/2 -translate-x-1/2 top-2"></div>
-          <span class="text-xs font-semibold text-indigo-600 mt-1">매장 상세 정보</span>
-          <button id="close-mobile-sheet" type="button" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg" aria-label="상세 닫기">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
+      <!-- Mobile Bottom Sheet (for Shop Detail, Nearby List, OR Favorites — keeps map visible!) -->
+      <div id="mobile-sheet" class="hidden md:hidden absolute inset-x-0 bottom-0 z-[450] bg-white rounded-t-2xl shadow-2xl border-t border-slate-200 max-h-[54%] flex flex-col transition-all">
+        <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 shrink-0 relative">
+          <div class="w-10 h-1 rounded-full bg-slate-300 mx-auto absolute left-1/2 -translate-x-1/2 top-1.5"></div>
+          <span id="mobile-sheet-title" class="text-xs font-bold text-indigo-600 mt-1">매장 상세 정보</span>
+          <div class="flex items-center gap-1.5 mt-1">
+            <button id="toggle-sheet-expand" type="button" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition">
+              전체 보기
+            </button>
+            <button id="close-mobile-sheet" type="button" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg" aria-label="닫기">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
         </div>
-        <div id="mobile-sheet-body" class="overflow-y-auto p-4 space-y-4"></div>
+        <div id="mobile-sheet-body" class="overflow-y-auto p-4 space-y-3"></div>
       </div>
     </section>
   </main>
@@ -244,11 +273,29 @@
       <i data-lucide="list" class="w-5 h-5"></i>
       <span>목록 (<span id="mob-list-count">0</span>)</span>
     </button>
-    <button id="mob-tab-fav" type="button" class="py-2.5 flex flex-col items-center gap-0.5 text-slate-500 font-medium text-[11px]">
-      <i data-lucide="heart" class="w-5 h-5"></i>
+    <button id="mob-tab-fav" type="button" class="py-2.5 flex flex-col items-center gap-0.5 text-slate-500 font-medium text-[11px] relative">
+      <div class="relative">
+        <i data-lucide="heart" class="w-5 h-5"></i>
+        <span id="mob-fav-dot" class="hidden absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-rose-500"></span>
+      </div>
       <span>즐겨찾기 (<span id="mob-fav-count">0</span>)</span>
     </button>
   </nav>
+
+  <!-- Profile / Nickname / EXP Modal -->
+  <div id="profile-modal" class="hidden fixed inset-0 z-[1060] bg-slate-900/55 backdrop-blur-[2px] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-base font-bold text-slate-900">내 프로필 및 레벨</h2>
+        <button id="close-profile-modal" type="button" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg" aria-label="닫기">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="profile-modal-body" class="p-5 space-y-4">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+  </div>
 
   <!-- New Shop Report Modal -->
   <div id="report-modal" class="hidden fixed inset-0 z-[1000] bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center p-3 sm:p-4">
@@ -256,7 +303,7 @@
       <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
         <div>
           <h2 class="text-base font-bold text-slate-900">신규 뽑기방 제보하기</h2>
-          <p class="text-xs text-slate-500 mt-0.5">등록한 매장은 Supabase DB와 지도에 즉시 저장됩니다.</p>
+          <p class="text-xs text-slate-500 mt-0.5">반경 30m 이내 중복 매장은 등록할 수 없습니다.</p>
         </div>
         <button id="close-report-modal" type="button" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition" aria-label="모달 닫기">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -291,22 +338,47 @@
           </div>
         </div>
 
+        <!-- Initial Pin Color Picker (First Registration Only) -->
         <div>
-          <span class="block text-xs font-semibold text-slate-700 mb-1.5">결제 수단 및 편의시설</span>
-          <div class="flex flex-wrap gap-2 text-xs">
-            <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-              <input type="checkbox" name="payment" value="카드결제" checked class="accent-indigo-600" /> 카드결제
+          <span class="block text-xs font-semibold text-slate-700 mb-1.5">지도 아이콘 색상 <span class="font-normal text-slate-400">(최초 등록 시에만 지정 가능)</span></span>
+          <div id="pin-color-picker" class="flex items-center gap-2.5 flex-wrap">
+            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+              <input type="radio" name="pin_color" value="#1D1D1F" checked class="sr-only" />
+              <span class="w-4 h-4 rounded-full bg-[#1D1D1F] border border-slate-300"></span>
+              <span class="text-xs font-medium">차콜</span>
             </label>
-            <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-              <input type="checkbox" name="payment" value="현금" checked class="accent-indigo-600" /> 현금
+            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+              <input type="radio" name="pin_color" value="#4F46E5" class="sr-only" />
+              <span class="w-4 h-4 rounded-full bg-[#4F46E5]"></span>
+              <span class="text-xs font-medium">인디고</span>
             </label>
-            <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-              <input type="checkbox" name="payment" value="동전교환기" class="accent-indigo-600" /> 동전교환기
+            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+              <input type="radio" name="pin_color" value="#EC4899" class="sr-only" />
+              <span class="w-4 h-4 rounded-full bg-[#EC4899]"></span>
+              <span class="text-xs font-medium">핑크</span>
             </label>
-            <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-              <input type="checkbox" id="inp-24h" checked class="accent-indigo-600" /> 24시간 운영
+            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+              <input type="radio" name="pin_color" value="#0EA5E9" class="sr-only" />
+              <span class="w-4 h-4 rounded-full bg-[#0EA5E9]"></span>
+              <span class="text-xs font-medium">스카이</span>
+            </label>
+            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+              <input type="radio" name="pin_color" value="#10B981" class="sr-only" />
+              <span class="w-4 h-4 rounded-full bg-[#10B981]"></span>
+              <span class="text-xs font-medium">민트</span>
+            </label>
+            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+              <input type="radio" name="pin_color" value="#F59E0B" class="sr-only" />
+              <span class="w-4 h-4 rounded-full bg-[#F59E0B]"></span>
+              <span class="text-xs font-medium">앰버</span>
             </label>
           </div>
+        </div>
+
+        <div>
+          <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 text-xs">
+            <input type="checkbox" id="inp-24h" checked class="accent-indigo-600" /> 24시간 운영
+          </label>
         </div>
 
         <div>
@@ -387,18 +459,20 @@
 
     const DEFAULT_CENTER = { lat: 35.87059, lng: 128.59802 };
     const CLOSED_REPORT_THRESHOLD = 5;
+    const FAV_SEEN_KEY = 'clawmap_fav_seen_v1';
 
+    // Lv.1~2 identical, Lv.3+ requires 3x more EXP (1/3 speed)
     const LEVEL_TABLE = [
       { level: 1, minExp: 0, title: '새싹 도전자', badgeClass: 'bg-slate-100 text-slate-600' },
       { level: 2, minExp: 30, title: '동네 탐험가', badgeClass: 'bg-emerald-50 text-emerald-700' },
-      { level: 3, minExp: 80, title: '크레인 루키', badgeClass: 'bg-sky-50 text-sky-700' },
-      { level: 4, minExp: 160, title: '인형 사냥꾼', badgeClass: 'bg-indigo-50 text-indigo-700' },
-      { level: 5, minExp: 300, title: '뽑기방 단골', badgeClass: 'bg-violet-50 text-violet-700' },
-      { level: 6, minExp: 500, title: '경품 감별사', badgeClass: 'bg-fuchsia-50 text-fuchsia-700' },
-      { level: 7, minExp: 800, title: '집게 마스터', badgeClass: 'bg-amber-50 text-amber-700' },
-      { level: 8, minExp: 1200, title: '상권 개척자', badgeClass: 'bg-orange-50 text-orange-700' },
-      { level: 9, minExp: 1800, title: '뽑기 고인물', badgeClass: 'bg-rose-50 text-rose-700' },
-      { level: 10, minExp: 2500, title: '전설의 크레인왕', badgeClass: 'bg-gradient-to-r from-amber-200 to-yellow-100 text-amber-900 border border-amber-300' }
+      { level: 3, minExp: 180, title: '크레인 루키', badgeClass: 'bg-sky-50 text-sky-700' },
+      { level: 4, minExp: 420, title: '인형 사냥꾼', badgeClass: 'bg-indigo-50 text-indigo-700' },
+      { level: 5, minExp: 840, title: '뽑기방 단골', badgeClass: 'bg-violet-50 text-violet-700' },
+      { level: 6, minExp: 1440, title: '경품 감별사', badgeClass: 'bg-fuchsia-50 text-fuchsia-700' },
+      { level: 7, minExp: 2340, title: '집게 마스터', badgeClass: 'bg-amber-50 text-amber-700' },
+      { level: 8, minExp: 3540, title: '상권 개척자', badgeClass: 'bg-orange-50 text-orange-700' },
+      { level: 9, minExp: 5340, title: '뽑기 고인물', badgeClass: 'bg-rose-50 text-rose-700' },
+      { level: 10, minExp: 7440, title: '전설의 크레인왕', badgeClass: 'bg-gradient-to-r from-amber-200 to-yellow-100 text-amber-900 border border-amber-300' }
     ];
 
     const state = {
@@ -408,8 +482,11 @@
       searchQuery: '',
       deskTab: 'list',
       mobTab: 'map',
+      sheetExpanded: false,
       favorites: new Set(),
       likedReviews: new Set(),
+      myReports: new Set(),
+      favNewCounts: new Map(),
       pickLocationMode: false,
       pickedCoords: { ...DEFAULT_CENTER },
       userLocation: null,
@@ -422,6 +499,7 @@
     let userOverlay = null;
     const overlaysById = new Map();
     let toastTimer = null;
+    let isProgrammaticPan = false;
 
     function showToast(msg) {
       const el = document.getElementById('toast');
@@ -440,13 +518,29 @@
         .replace(/'/g, '&#39;');
     }
 
+    function formatDateTime(isoStr) {
+      if (!isoStr) return '';
+      const d = new Date(isoStr);
+      if (Number.isNaN(d.getTime())) return String(isoStr).slice(0, 16);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${y}.${m}.${day} ${hh}:${mm}`;
+    }
+
     function getLevelInfo(exp) {
       const val = Math.max(0, Number(exp || 0));
       let current = LEVEL_TABLE[0];
-      for (const tier of LEVEL_TABLE) {
-        if (val >= tier.minExp) current = tier;
+      let next = null;
+      for (let i = 0; i < LEVEL_TABLE.length; i++) {
+        if (val >= LEVEL_TABLE[i].minExp) {
+          current = LEVEL_TABLE[i];
+          next = LEVEL_TABLE[i + 1] || null;
+        }
       }
-      return current;
+      return { ...current, next };
     }
 
     function getDistanceMeters(lat1, lng1, lat2, lng2) {
@@ -464,8 +558,10 @@
       return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
     }
 
+    // 0 reviews -> 0.8x, 1+ reviews -> 1.0x up to 1.3x
     function getPinScale(reviewCount) {
       const count = Math.max(0, Number(reviewCount || 0));
+      if (count === 0) return 0.8;
       let scale = 1.0;
       if (count <= 100) {
         scale += Math.floor(count / 10) * 0.01;
@@ -498,11 +594,21 @@
       return { lat: c.getLat(), lng: c.getLng() };
     }
 
+    function isShopInViewport(shop) {
+      if (!kakaoMap || !window.kakao || !window.kakao.maps) return true;
+      const bounds = kakaoMap.getBounds();
+      if (!bounds) return true;
+      return bounds.contain(new window.kakao.maps.LatLng(shop.lat, shop.lng));
+    }
+
     function getFilteredShops(onlyFavorites = false) {
       const q = state.searchQuery.trim().toLowerCase();
       return state.shops.filter(shop => {
-        if (onlyFavorites && !state.favorites.has(shop.id)) return false;
-        if (state.activeFilter === 'card' && !(shop.payments || []).includes('카드결제')) return false;
+        if (onlyFavorites) {
+          if (!state.favorites.has(shop.id)) return false;
+        } else {
+          if (!isShopInViewport(shop)) return false;
+        }
         if (state.activeFilter === '24h' && !shop.is_24h) return false;
         if (state.activeFilter === 'newPrize' && !shop.has_new_prize) return false;
         if (state.activeFilter === 'large' && !(shop.machines || []).includes('대형 크레인')) return false;
@@ -534,6 +640,68 @@
       });
     }
 
+    function getFavSeenMap() {
+      try {
+        return JSON.parse(localStorage.getItem(FAV_SEEN_KEY) || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function markFavoriteShopSeen(shopId) {
+      try {
+        const seen = getFavSeenMap();
+        seen[shopId] = new Date().toISOString();
+        localStorage.setItem(FAV_SEEN_KEY, JSON.stringify(seen));
+      } catch (e) {}
+      computeFavoriteAlarms();
+    }
+
+    function computeFavoriteAlarms() {
+      const seen = getFavSeenMap();
+      const newMap = new Map();
+      let totalNew = 0;
+
+      state.shops.forEach(shop => {
+        if (!state.favorites.has(shop.id)) return;
+        const lastSeen = seen[shop.id];
+        const reviews = shop.reviews || [];
+        const newReviews = lastSeen
+          ? reviews.filter(r => new Date(r.created_at) > new Date(lastSeen) && (!state.user || r.user_id !== state.user.id))
+          : [];
+        if (newReviews.length > 0) {
+          newMap.set(shop.id, newReviews.length);
+          totalNew += newReviews.length;
+        } else if (!lastSeen) {
+          seen[shop.id] = new Date().toISOString();
+          try { localStorage.setItem(FAV_SEEN_KEY, JSON.stringify(seen)); } catch (e) {}
+        }
+      });
+
+      state.favNewCounts = newMap;
+      const alarmBtn = document.getElementById('fav-alarm-btn');
+      const alarmBadge = document.getElementById('fav-alarm-badge');
+      const profileDot = document.getElementById('profile-alarm-dot');
+      const deskDot = document.getElementById('desk-fav-dot');
+      const mobDot = document.getElementById('mob-fav-dot');
+
+      if (state.user) alarmBtn.classList.remove('hidden');
+      else alarmBtn.classList.add('hidden');
+
+      if (totalNew > 0) {
+        alarmBadge.textContent = totalNew > 9 ? '9+' : String(totalNew);
+        alarmBadge.classList.remove('hidden');
+        profileDot.classList.remove('hidden');
+        deskDot.classList.remove('hidden');
+        mobDot.classList.remove('hidden');
+      } else {
+        alarmBadge.classList.add('hidden');
+        profileDot.classList.add('hidden');
+        deskDot.classList.add('hidden');
+        mobDot.classList.add('hidden');
+      }
+    }
+
     function updateAuthUI() {
       const loginBtn = document.getElementById('header-login-btn');
       const userBtn = document.getElementById('header-user-btn');
@@ -551,6 +719,60 @@
         userBtn.classList.add('hidden');
         userBtn.classList.remove('inline-flex');
       }
+    }
+
+    function openProfileModal() {
+      const body = document.getElementById('profile-modal-body');
+      if (!state.user) {
+        body.innerHTML = `
+          <div class="text-center space-y-3 py-2">
+            <div class="text-3xl">🕹️</div>
+            <p class="text-sm font-semibold text-slate-800">로그인하면 내 레벨과 닉네임을 관리할 수 있어요</p>
+            <p class="text-xs text-slate-500">후기 작성, 사진 첨부, 매장 제보로 경험치를 모아 Lv.10 전설의 크레인왕에 도전해 보세요.</p>
+            <button type="button" data-action="modal-kakao-login" class="w-full py-2.5 px-4 rounded-xl bg-[#FEE500] hover:bg-[#FDD800] text-[#191919] text-sm font-bold transition">
+              💬 카카오 로그인하기
+            </button>
+          </div>
+        `;
+      } else {
+        const exp = state.user.exp || 0;
+        const info = getLevelInfo(exp);
+        const pct = info.next
+          ? Math.min(100, Math.round(((exp - info.minExp) / (info.next.minExp - info.minExp)) * 100))
+          : 100;
+        const remainText = info.next ? `다음 레벨까지 ${info.next.minExp - exp} EXP 남음` : '최고 레벨 달성!';
+
+        body.innerHTML = `
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold px-2 py-0.5 rounded-lg ${info.badgeClass}">Lv.${info.level} ${info.title}</span>
+              <span class="text-xs font-bold text-indigo-600">${exp.toLocaleString()} EXP</span>
+            </div>
+            <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div class="h-full bg-indigo-600 rounded-full transition-all" style="width:${pct}%"></div>
+            </div>
+            <div class="text-[11px] text-slate-500 text-right">${remainText}</div>
+          </div>
+
+          <form id="nickname-form" class="space-y-2">
+            <label for="inp-nickname" class="block text-xs font-semibold text-slate-700">닉네임 변경</label>
+            <div class="flex gap-2">
+              <input id="inp-nickname" type="text" required maxlength="16" value="${escapeHtml(state.user.nickname)}" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-indigo-500 outline-none" />
+              <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition">저장</button>
+            </div>
+          </form>
+
+          <div class="pt-2 border-t border-slate-100 flex justify-end">
+            <button type="button" data-action="modal-logout" class="text-xs font-semibold text-rose-600 hover:underline">로그아웃</button>
+          </div>
+        `;
+      }
+      document.getElementById('profile-modal').classList.remove('hidden');
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeProfileModal() {
+      document.getElementById('profile-modal').classList.add('hidden');
     }
 
     function openLoginModal(reasonText) {
@@ -579,7 +801,9 @@
         state.user = null;
         state.favorites = new Set();
         state.likedReviews = new Set();
+        state.myReports = new Set();
         updateAuthUI();
+        computeFavoriteAlarms();
         return;
       }
       const uid = session.user.id;
@@ -589,13 +813,16 @@
         nickname: (profile && profile.nickname) || session.user.user_metadata?.name || '뽑기유저',
         exp: (profile && profile.exp) || 0
       };
-      const [favRes, likeRes] = await Promise.all([
+      const [favRes, likeRes, repRes] = await Promise.all([
         sb.from('favorites').select('shop_id').eq('user_id', uid),
-        sb.from('review_likes').select('review_id').eq('user_id', uid)
+        sb.from('review_likes').select('review_id').eq('user_id', uid),
+        sb.from('shop_reports').select('shop_id').eq('user_id', uid)
       ]);
       state.favorites = new Set((favRes.data || []).map(r => r.shop_id));
       state.likedReviews = new Set((likeRes.data || []).map(r => r.review_id));
+      state.myReports = new Set((repRes.data || []).map(r => r.shop_id));
       updateAuthUI();
+      computeFavoriteAlarms();
     }
 
     async function loadShopsFromSupabase() {
@@ -605,22 +832,21 @@
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Load shops error:', error); showToast('불러오기 오류: ' + (error.message || error.code || '알 수 없음'));
+        console.error('Load shops error:', error);
+        showToast('불러오기 오류: ' + (error.message || error.code || '알 수 없음'));
         return;
       }
       state.shops = (data || []).map(shop => ({
         ...shop,
         reviews: (shop.reviews || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       }));
-      if (window.innerWidth >= 768 && !state.selectedShopId && state.shops.length > 0) {
-        state.selectedShopId = state.shops[0].id;
-      }
+      computeFavoriteAlarms();
       renderAll();
     }
 
     function renderMarkers() {
       const filtered = getFilteredShops(false);
-      document.getElementById('map-count-label').textContent = `표시 중인 매장 ${filtered.length}곳`;
+      document.getElementById('map-count-label').textContent = `이 화면 매장 ${filtered.length}곳`;
       document.getElementById('desk-list-count').textContent = filtered.length;
       document.getElementById('mob-list-count').textContent = filtered.length;
       document.getElementById('desk-fav-count').textContent = state.favorites.size;
@@ -636,11 +862,16 @@
       filtered.forEach(shop => {
         const suspected = isSuspectedClosed(shop);
         const isSelected = shop.id === state.selectedShopId;
-        const fill = suspected ? '#94A3B8' : (isSelected ? '#4F46E5' : '#1D1D1F');
+        const baseColor = shop.pin_color || '#1D1D1F';
+        const fill = suspected ? '#94A3B8' : (isSelected ? '#4F46E5' : baseColor);
         const isGachaOnly = (shop.machines || []).includes('가챠/캡슐') && !(shop.machines || []).includes('대형 크레인');
         const isNewHighlight = Boolean(shop.has_new_prize && !suspected);
-        const scale = suspected ? 0.8 : getPinScale((shop.reviews || []).length);
+        const reviewCount = (shop.reviews || []).length;
+        const scale = suspected ? 0.8 : getPinScale(reviewCount);
         const size = Math.round(36 * scale);
+
+        const { avgRating } = getAvgMetrics(shop);
+        const starPx = avgRating === '-' ? 0 : Math.round(7 + Number(avgRating) * 2.2); // 1점:9px ~ 5점:18px
 
         const bearSvg = `
           <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -678,10 +909,14 @@
 
         const el = document.createElement('div');
         el.className = `claw-pin ${isNewHighlight ? 'new-prize' : ''} ${isSelected ? 'selected' : ''}`;
-        el.style.width = `${size}px`;
-        el.style.height = `${size}px`;
         if (suspected) el.style.opacity = '0.8';
-        el.innerHTML = `${isGachaOnly ? gachaSvg : bearSvg}${isNewHighlight ? '<span class="pin-sparkle">✦</span>' : ''}`;
+        el.innerHTML = `
+          ${starPx > 0 ? `<span class="pin-star-badge" style="font-size:${starPx}px;">★</span>` : ''}
+          <div style="width:${size}px;height:${size}px;position:relative;">
+            ${isGachaOnly ? gachaSvg : bearSvg}
+            ${isNewHighlight ? '<span class="pin-sparkle">✦</span>' : ''}
+          </div>
+        `;
         el.addEventListener('click', (ev) => {
           ev.stopPropagation();
           if (state.pickLocationMode) return;
@@ -704,7 +939,7 @@
       const { avgRating, avgDifficulty } = getAvgMetrics(shop);
       const diffLabel = avgDifficulty === '-' ? '정보 없음' : Number(avgDifficulty) <= 2.3 ? '쉬움' : Number(avgDifficulty) <= 3.6 ? '보통' : '어려움';
       const suspected = isSuspectedClosed(shop);
-      const reportCount = Number(shop.report_count || 0);
+      const alreadyReported = state.myReports.has(shop.id);
 
       return `
         <div class="space-y-4" data-detail-shop="${shop.id}">
@@ -718,7 +953,7 @@
             <div>
               <div class="flex flex-wrap items-center gap-1.5 mb-1">
                 ${shop.has_new_prize ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">✨ 신상 경품</span>' : ''}
-                ${suspected ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">폐업 의심</span>' : (reportCount > 0 ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">폐업 신고 ${reportCount}/${CLOSED_REPORT_THRESHOLD}</span>` : '')}
+                ${suspected ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">폐업 의심</span>' : ''}
               </div>
               <h3 class="text-base font-bold text-slate-900 leading-snug">${escapeHtml(shop.name)}</h3>
               <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(shop.address)}</p>
@@ -745,12 +980,6 @@
 
           <div class="space-y-2.5">
             <div>
-              <div class="text-[11px] font-semibold text-slate-500 mb-1.5">결제 및 편의시설</div>
-              <div class="flex flex-wrap gap-1.5">
-                ${(shop.payments || []).map(p => `<span class="text-xs px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 font-medium">${escapeHtml(p)}</span>`).join('')}
-              </div>
-            </div>
-            <div>
               <div class="text-[11px] font-semibold text-slate-500 mb-1.5">보유 기계</div>
               <div class="flex flex-wrap gap-1.5">
                 ${(shop.machines || []).map(m => `<span class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-medium">${escapeHtml(m)}</span>`).join('')}
@@ -768,8 +997,14 @@
             <button type="button" data-action="focus-map" data-id="${shop.id}" class="flex-1 py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5">
               <i data-lucide="navigation" class="w-3.5 h-3.5"></i> 지도에서 보기
             </button>
-            <button type="button" data-action="report-closed" data-id="${shop.id}" class="py-2 px-3 rounded-xl border border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600 text-xs font-semibold transition">
-              폐업/수정 신고${reportCount > 0 ? ` (${reportCount})` : ''}
+            <button
+              type="button"
+              data-action="report-closed"
+              data-id="${shop.id}"
+              ${alreadyReported ? 'disabled' : ''}
+              class="py-2 px-3 rounded-xl border text-xs font-semibold transition ${alreadyReported ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : 'border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600'}"
+            >
+              ${alreadyReported ? '폐점 신고 완료' : '폐업/수정 신고'}
             </button>
           </div>
 
@@ -785,7 +1020,10 @@
           </button>
 
           <div class="border-t border-slate-200 pt-3 space-y-3">
-            <h4 class="text-xs font-bold text-slate-800">한줄 후기 (${(shop.reviews || []).length})</h4>
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-slate-800">한줄 후기 (${(shop.reviews || []).length})</h4>
+              <span class="text-[10px] text-slate-400">등록 후 수정·삭제 불가</span>
+            </div>
 
             <form data-action="submit-review" data-id="${shop.id}" class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
               <div class="grid grid-cols-2 gap-2">
@@ -831,7 +1069,7 @@
                 const nickname = (r.profiles && r.profiles.nickname) || '뽑기유저';
                 const exp = (r.profiles && r.profiles.exp) || 0;
                 const lv = getLevelInfo(exp);
-                const dateStr = (r.created_at || '').slice(0, 10);
+                const dateTimeStr = formatDateTime(r.created_at);
                 return `
                   <div class="bg-white border border-slate-100 rounded-xl p-2.5 shadow-sm">
                     <div class="flex items-center justify-between gap-2 text-[11px] text-slate-500 mb-1 flex-wrap">
@@ -839,7 +1077,7 @@
                         <span class="font-semibold text-slate-800 truncate">${escapeHtml(nickname)}</span>
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md ${lv.badgeClass} shrink-0">Lv.${lv.level} ${lv.title}</span>
                       </div>
-                      <span class="shrink-0">★ ${r.rating} · 난이도 ${r.difficulty}/5 · ${escapeHtml(dateStr)}</span>
+                      <span class="shrink-0">★ ${r.rating} · 난이도 ${r.difficulty}/5 · ${escapeHtml(dateTimeStr)}</span>
                     </div>
                     ${r.content ? `<p class="text-xs text-slate-700 leading-relaxed">${escapeHtml(r.content)}</p>` : ''}
                     ${r.photo_url ? `
@@ -899,10 +1137,10 @@
 
       if (shops.length === 0) {
         return adBannerSlot + sortBar + `
-          <div class="text-center py-12 px-4">
+          <div class="text-center py-10 px-4">
             <div class="text-3xl mb-2">🔍</div>
             <p class="text-sm font-semibold text-slate-700">${escapeHtml(emptyText)}</p>
-            <p class="text-xs text-slate-500 mt-1">상단의 '제보하기' 버튼으로 첫 매장을 등록해 보세요.</p>
+            <p class="text-xs text-slate-500 mt-1">지도를 이동하거나 상단 '제보하기'로 매장을 등록해 보세요.</p>
           </div>
         `;
       }
@@ -912,7 +1150,7 @@
         const isSelected = shop.id === state.selectedShopId;
         const { avgRating, avgDifficulty } = getAvgMetrics(shop);
         const suspected = isSuspectedClosed(shop);
-        const reportCount = Number(shop.report_count || 0);
+        const newFavReviews = state.favNewCounts.get(shop.id) || 0;
 
         return `
           <div data-action="select-shop" data-id="${shop.id}" class="cursor-pointer rounded-2xl border p-3.5 transition ${isSelected ? 'border-indigo-500 bg-indigo-50/40 ring-2 ring-indigo-100' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'}">
@@ -920,7 +1158,8 @@
               <div class="min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <h3 class="text-sm font-bold text-slate-900 truncate">${escapeHtml(shop.name)}</h3>
-                  ${suspected ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">폐업 의심</span>' : (reportCount > 0 ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">신고 ${reportCount}/${CLOSED_REPORT_THRESHOLD}</span>` : '')}
+                  ${suspected ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">폐업 의심</span>' : ''}
+                  ${newFavReviews > 0 ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600">새 후기 ${newFavReviews}</span>` : ''}
                 </div>
                 <p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(shop.address)}</p>
               </div>
@@ -952,23 +1191,28 @@
       const panelContent = document.getElementById('panel-content');
       const mobileSheet = document.getElementById('mobile-sheet');
       const mobileSheetBody = document.getElementById('mobile-sheet-body');
+      const mobileSheetTitle = document.getElementById('mobile-sheet-title');
+      const expandBtn = document.getElementById('toggle-sheet-expand');
       const isDesktop = window.innerWidth >= 768;
+
+      const prevPanelScroll = panelContent.scrollTop;
+      const prevSheetScroll = mobileSheetBody.scrollTop;
 
       const dListBtn = document.getElementById('desk-tab-list');
       const dFavBtn = document.getElementById('desk-tab-fav');
       if (state.deskTab === 'list') {
         dListBtn.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition bg-white text-indigo-600 shadow-sm border border-slate-200/80';
-        dFavBtn.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition text-slate-600 hover:bg-white/60';
+        dFavBtn.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition text-slate-600 hover:bg-white/60 relative';
       } else {
-        dFavBtn.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition bg-white text-indigo-600 shadow-sm border border-slate-200/80';
+        dFavBtn.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition bg-white text-indigo-600 shadow-sm border border-slate-200/80 relative';
         dListBtn.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition text-slate-600 hover:bg-white/60';
       }
 
       ['map', 'list', 'fav'].forEach(t => {
         const btn = document.getElementById(`mob-tab-${t}`);
         btn.className = state.mobTab === t
-          ? 'py-2.5 flex flex-col items-center gap-0.5 text-indigo-600 font-semibold text-[11px]'
-          : 'py-2.5 flex flex-col items-center gap-0.5 text-slate-500 font-medium text-[11px]';
+          ? 'py-2.5 flex flex-col items-center gap-0.5 text-indigo-600 font-semibold text-[11px] relative'
+          : 'py-2.5 flex flex-col items-center gap-0.5 text-slate-500 font-medium text-[11px] relative';
       });
 
       const selectedShop = state.shops.find(s => s.id === state.selectedShopId) || null;
@@ -981,25 +1225,48 @@
           panelContent.innerHTML = buildDetailHtml(selectedShop, true);
         } else {
           const onlyFav = state.deskTab === 'fav';
-          panelContent.innerHTML = buildListHtml(getFilteredShops(onlyFav), onlyFav ? '즐겨찾기한 매장이 없습니다.' : '등록된 매장이 없습니다.', onlyFav);
+          panelContent.innerHTML = buildListHtml(
+            getFilteredShops(onlyFav),
+            onlyFav ? '즐겨찾기한 매장이 없습니다.' : '현재 화면에 표시된 매장이 없습니다.',
+            onlyFav
+          );
         }
-      } else if (state.mobTab === 'map') {
+        panelContent.scrollTop = prevPanelScroll;
+      } else {
+        // Mobile keeps the map visible! List/Fav/Detail all use mobile-sheet
         sidePanel.classList.add('hidden');
         sidePanel.classList.remove('flex');
         mapSection.classList.remove('hidden');
-        if (selectedShop && !state.pickLocationMode) {
+
+        if (state.sheetExpanded) {
+          mobileSheet.classList.remove('max-h-[54%]');
+          mobileSheet.classList.add('h-[90%]', 'max-h-[90%]');
+          expandBtn.textContent = '지도와 보기';
+        } else {
+          mobileSheet.classList.remove('h-[90%]', 'max-h-[90%]');
+          mobileSheet.classList.add('max-h-[54%]');
+          expandBtn.textContent = '전체 보기';
+        }
+
+        if (state.pickLocationMode) {
+          mobileSheet.classList.add('hidden');
+        } else if (selectedShop) {
+          mobileSheetTitle.textContent = '매장 상세 정보';
           mobileSheet.classList.remove('hidden');
           mobileSheetBody.innerHTML = buildDetailHtml(selectedShop, false);
+        } else if (state.mobTab === 'list' || state.mobTab === 'fav') {
+          const onlyFav = state.mobTab === 'fav';
+          mobileSheetTitle.textContent = onlyFav ? '즐겨찾기 매장' : '이 화면 주변 매장';
+          mobileSheet.classList.remove('hidden');
+          mobileSheetBody.innerHTML = buildListHtml(
+            getFilteredShops(onlyFav),
+            onlyFav ? '즐겨찾기한 매장이 없습니다.' : '현재 화면에 표시된 매장이 없습니다.',
+            onlyFav
+          );
         } else {
           mobileSheet.classList.add('hidden');
         }
-      } else {
-        sidePanel.classList.remove('hidden');
-        sidePanel.classList.add('flex', 'w-full');
-        mapSection.classList.add('hidden');
-        mobileSheet.classList.add('hidden');
-        const onlyFav = state.mobTab === 'fav';
-        panelContent.innerHTML = buildListHtml(getFilteredShops(onlyFav), onlyFav ? '즐겨찾기한 매장이 없습니다.' : '등록된 매장이 없습니다.', onlyFav);
+        mobileSheetBody.scrollTop = prevSheetScroll;
       }
       if (window.lucide) window.lucide.createIcons();
     }
@@ -1012,12 +1279,15 @@
     function panToShopVisibleCenter(shop) {
       if (!kakaoMap || !window.kakao || !window.kakao.maps) return;
       const target = new window.kakao.maps.LatLng(shop.lat, shop.lng);
-      if (window.innerWidth < 768) {
+      isProgrammaticPan = true;
+      setTimeout(() => { isProgrammaticPan = false; }, 450);
+
+      if (window.innerWidth < 768 && !state.sheetExpanded) {
         const mapEl = document.getElementById('map');
         const proj = kakaoMap.getProjection();
         if (mapEl && proj && typeof proj.pointFromCoords === 'function' && typeof proj.coordsFromPoint === 'function') {
           const pt = proj.pointFromCoords(target);
-          const offsetY = Math.round(mapEl.clientHeight * 0.27);
+          const offsetY = Math.round(mapEl.clientHeight * 0.25);
           const shifted = proj.coordsFromPoint(new window.kakao.maps.Point(pt.x, pt.y + offsetY));
           kakaoMap.panTo(shifted);
           return;
@@ -1028,6 +1298,10 @@
 
     function selectShop(shopId, panMap = true) {
       state.selectedShopId = shopId;
+      state.sheetExpanded = false;
+      if (state.favorites.has(shopId)) {
+        markFavoriteShopSeen(shopId);
+      }
       const shop = state.shops.find(s => s.id === shopId);
       if (shop && panMap && kakaoMap) {
         if (window.innerWidth < 768) state.mobTab = 'map';
@@ -1041,6 +1315,7 @@
       }
     }
 
+    // Never pan/reset scroll when toggling favorite!
     async function toggleFavorite(shopId) {
       const uid = state.user.id;
       if (state.favorites.has(shopId)) {
@@ -1052,30 +1327,43 @@
         const { error } = await sb.from('favorites').insert({ shop_id: shopId, user_id: uid });
         if (error) return showToast('즐겨찾기 저장에 실패했습니다.');
         state.favorites.add(shopId);
-        showToast('즐겨찾기에 추가했습니다.');
+        markFavoriteShopSeen(shopId);
+        showToast('즐겨찾기에 추가했습니다. 새 후기 알림이 켜집니다.');
       }
-      renderAll();
+      computeFavoriteAlarms();
+      document.getElementById('desk-fav-count').textContent = state.favorites.size;
+      document.getElementById('mob-fav-count').textContent = state.favorites.size;
+      renderPanels();
     }
 
-    async function toggleReviewLike(reviewId) {
+    async function toggleReviewLike(reviewId, shopId) {
       const uid = state.user.id;
+      const shop = state.shops.find(s => s.id === shopId);
+      const rev = shop ? (shop.reviews || []).find(r => r.id === reviewId) : null;
+
       if (state.likedReviews.has(reviewId)) {
         const { error } = await sb.from('review_likes').delete().eq('review_id', reviewId).eq('user_id', uid);
         if (!error) {
           state.likedReviews.delete(reviewId);
-          await loadShopsFromSupabase();
+          if (rev) rev.likes_count = Math.max(0, Number(rev.likes_count || 0) - 1);
+          renderPanels();
         }
       } else {
         const { error } = await sb.from('review_likes').insert({ review_id: reviewId, user_id: uid });
         if (!error) {
           state.likedReviews.add(reviewId);
+          if (rev) rev.likes_count = Number(rev.likes_count || 0) + 1;
           showToast('후기에 공감했습니다.');
-          await loadShopsFromSupabase();
+          renderPanels();
         }
       }
     }
 
     async function reportShopClosed(shopId) {
+      if (state.myReports.has(shopId)) {
+        showToast('이미 신고한 매장입니다. (취소 불가)');
+        return;
+      }
       const uid = state.user.id;
       const { error } = await sb.from('shop_reports').insert({
         shop_id: shopId,
@@ -1084,13 +1372,16 @@
       });
       if (error) {
         if (error.code === '23505') {
-          showToast('이미 이 매장에 폐업 신고를 접수하셨습니다.');
+          state.myReports.add(shopId);
+          renderPanels();
+          showToast('이미 신고한 매장입니다.');
         } else {
           showToast('신고 접수 중 오류가 발생했습니다.');
         }
         return;
       }
-      showToast('폐업/수정 신고가 접수되었습니다.');
+      state.myReports.add(shopId);
+      showToast('폐업/수정 신고가 접수되었습니다. (취소 불가)');
       await loadShopsFromSupabase();
     }
 
@@ -1169,9 +1460,11 @@
       } else if (action === 'focus-map') {
         const shop = state.shops.find(s => s.id === id);
         if (shop && kakaoMap) {
-          if (window.innerWidth < 768) { state.mobTab = 'map'; document.getElementById('mobile-sheet').classList.add('hidden'); }
+          state.sheetExpanded = false;
+          if (window.innerWidth < 768) state.mobTab = 'map';
+          renderPanels();
           kakaoMap.setLevel(3);
-          kakaoMap.panTo(new window.kakao.maps.LatLng(shop.lat, shop.lng));
+          panToShopVisibleCenter(shop);
           showToast(`${shop.name} 위치로 이동했습니다.`);
         }
       } else if (action === 'clear-review-photo') {
@@ -1188,7 +1481,7 @@
         if (src) { document.getElementById('photo-modal-img').src = src; document.getElementById('photo-modal').classList.remove('hidden'); }
       } else if (action === 'toggle-review-like') {
         const reviewId = btn.getAttribute('data-review-id');
-        requireKakaoAuth('후기 공감은 카카오 로그인이 필요합니다.', () => toggleReviewLike(reviewId));
+        requireKakaoAuth('후기 공감은 카카오 로그인이 필요합니다.', () => toggleReviewLike(reviewId, id));
       } else if (action === 'report-closed') {
         requireKakaoAuth('폐업/수정 신고는 카카오 로그인이 필요합니다.', () => reportShopClosed(id));
       }
@@ -1216,7 +1509,10 @@
           content,
           photo_url: photoUrl
         });
-        if (error) { console.error('Review insert error:', error); return showToast('후기 등록 실패: ' + (error.message || error.code || '권한 오류')); }
+        if (error) {
+          console.error('Review insert error:', error);
+          return showToast('후기 등록 실패: ' + (error.message || error.code || '오류'));
+        }
         await loadUserSession();
         showToast('한줄 후기가 등록되었습니다!');
         await loadShopsFromSupabase();
@@ -1242,7 +1538,7 @@
             userOverlay = new window.kakao.maps.CustomOverlay({ position: loc, content: dot, zIndex: 8 });
             userOverlay.setMap(kakaoMap);
           }
-          renderPanels();
+          renderAll();
           if (!silent) showToast('현재 위치로 이동했습니다.');
         },
         () => {
@@ -1260,6 +1556,36 @@
 
     function closeReportModal() {
       document.getElementById('report-modal').classList.add('hidden');
+    }
+
+    function initFilterDragScroll() {
+      const el = document.getElementById('filter-scroll-bar');
+      let isDown = false;
+      let startX = 0;
+      let scrollLeft = 0;
+      let dragged = false;
+
+      el.addEventListener('mousedown', (e) => {
+        isDown = true;
+        dragged = false;
+        startX = e.pageX - el.offsetLeft;
+        scrollLeft = el.scrollLeft;
+      });
+      window.addEventListener('mouseup', () => { isDown = false; });
+      el.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        const x = e.pageX - el.offsetLeft;
+        const walk = x - startX;
+        if (Math.abs(walk) > 4) dragged = true;
+        if (dragged) el.scrollLeft = scrollLeft - walk;
+      });
+      el.addEventListener('click', (e) => {
+        if (dragged) {
+          e.stopPropagation();
+          e.preventDefault();
+          dragged = false;
+        }
+      }, true);
     }
 
     function initKakaoMap() {
@@ -1282,13 +1608,18 @@
           openReportModal(true);
           showToast('위치가 선택되었습니다.');
         });
-        renderMarkers();
+        window.kakao.maps.event.addListener(kakaoMap, 'idle', () => {
+          if (isProgrammaticPan) return;
+          renderAll();
+        });
+        renderAll();
         moveToCurrentLocation(true);
       });
     }
 
     async function initApp() {
       initKakaoMap();
+      initFilterDragScroll();
 
       document.getElementById('panel-content').addEventListener('click', handleDelegatedClick);
       document.getElementById('panel-content').addEventListener('submit', handleDelegatedSubmit);
@@ -1320,10 +1651,89 @@
 
       document.getElementById('desk-tab-list').addEventListener('click', () => { state.deskTab = 'list'; state.selectedShopId = null; renderPanels(); });
       document.getElementById('desk-tab-fav').addEventListener('click', () => { state.deskTab = 'fav'; state.selectedShopId = null; renderPanels(); });
-      document.getElementById('mob-tab-map').addEventListener('click', () => { state.mobTab = 'map'; renderPanels(); setTimeout(() => { if (kakaoMap) kakaoMap.relayout(); }, 50); });
-      document.getElementById('mob-tab-list').addEventListener('click', () => { state.mobTab = 'list'; renderPanels(); });
-      document.getElementById('mob-tab-fav').addEventListener('click', () => { state.mobTab = 'fav'; renderPanels(); });
-      document.getElementById('close-mobile-sheet').addEventListener('click', () => { state.selectedShopId = null; renderAll(); });
+
+      document.getElementById('mob-tab-map').addEventListener('click', () => {
+        state.mobTab = 'map';
+        state.selectedShopId = null;
+        state.sheetExpanded = false;
+        renderPanels();
+      });
+      document.getElementById('mob-tab-list').addEventListener('click', () => {
+        state.mobTab = 'list';
+        state.selectedShopId = null;
+        state.sheetExpanded = false;
+        renderPanels();
+      });
+      document.getElementById('mob-tab-fav').addEventListener('click', () => {
+        state.mobTab = 'fav';
+        state.selectedShopId = null;
+        state.sheetExpanded = false;
+        renderPanels();
+      });
+      document.getElementById('toggle-sheet-expand').addEventListener('click', () => {
+        state.sheetExpanded = !state.sheetExpanded;
+        renderPanels();
+      });
+      document.getElementById('close-mobile-sheet').addEventListener('click', () => {
+        state.selectedShopId = null;
+        state.mobTab = 'map';
+        state.sheetExpanded = false;
+        renderAll();
+      });
+
+      document.getElementById('fav-alarm-btn').addEventListener('click', () => {
+        if (window.innerWidth >= 768) {
+          state.deskTab = 'fav';
+          state.selectedShopId = null;
+        } else {
+          state.mobTab = 'fav';
+          state.selectedShopId = null;
+          state.sheetExpanded = false;
+        }
+        renderPanels();
+        if (state.favNewCounts.size === 0) {
+          showToast('관심 매장에 새로운 후기 알림이 없습니다.');
+        } else {
+          showToast('새 후기가 달린 관심 매장을 확인해 보세요!');
+        }
+      });
+
+      document.getElementById('open-profile-btn').addEventListener('click', openProfileModal);
+      document.getElementById('header-user-btn').addEventListener('click', openProfileModal);
+      document.getElementById('close-profile-modal').addEventListener('click', closeProfileModal);
+      document.getElementById('profile-modal-body').addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const act = btn.getAttribute('data-action');
+        if (act === 'modal-kakao-login') {
+          closeProfileModal();
+          openLoginModal('');
+        } else if (act === 'modal-logout') {
+          await sb.auth.signOut();
+          state.user = null;
+          state.favorites = new Set();
+          state.likedReviews = new Set();
+          state.myReports = new Set();
+          closeProfileModal();
+          updateAuthUI();
+          computeFavoriteAlarms();
+          renderAll();
+          showToast('카카오 로그아웃 되었습니다.');
+        }
+      });
+      document.getElementById('profile-modal-body').addEventListener('submit', async (e) => {
+        if (e.target.id !== 'nickname-form' || !state.user) return;
+        e.preventDefault();
+        const newNick = document.getElementById('inp-nickname').value.trim();
+        if (!newNick) return;
+        const { error } = await sb.from('profiles').update({ nickname: newNick }).eq('id', state.user.id);
+        if (error) return showToast('닉네임 변경 실패: ' + (error.message || '오류'));
+        state.user.nickname = newNick;
+        updateAuthUI();
+        closeProfileModal();
+        showToast('닉네임이 변경되었습니다!');
+        await loadShopsFromSupabase();
+      });
 
       document.getElementById('open-report-btn').addEventListener('click', () => {
         requireKakaoAuth('신규 매장 제보는 카카오 로그인이 필요합니다.', () => openReportModal(false));
@@ -1333,7 +1743,7 @@
       document.getElementById('pick-on-map-btn').addEventListener('click', () => {
         closeReportModal();
         state.pickLocationMode = true;
-        if (window.innerWidth < 768) { state.mobTab = 'map'; renderPanels(); setTimeout(() => { if (kakaoMap) kakaoMap.relayout(); }, 50); }
+        if (window.innerWidth < 768) { state.mobTab = 'map'; renderPanels(); }
         document.getElementById('pick-mode-banner').classList.remove('hidden');
       });
       document.getElementById('cancel-pick-btn').addEventListener('click', () => {
@@ -1346,10 +1756,27 @@
         e.preventDefault();
         const name = document.getElementById('inp-name').value.trim();
         if (!name || !state.user) return;
+
+        // Duplicate prevention check (within 30m OR same name within 100m)
+        const normNewName = name.replace(/\s+/g, '').toLowerCase();
+        const duplicate = state.shops.find(s => {
+          if (s.status === 'closed') return false;
+          const dist = getDistanceMeters(s.lat, s.lng, state.pickedCoords.lat, state.pickedCoords.lng);
+          const normOld = (s.name || '').replace(/\s+/g, '').toLowerCase();
+          return dist < 30 || (dist < 100 && normOld === normNewName);
+        });
+        if (duplicate) {
+          showToast(`이미 반경 30m 이내에 '${duplicate.name}' 매장이 등록되어 있습니다.`);
+          closeReportModal();
+          selectShop(duplicate.id, true);
+          return;
+        }
+
         const address = document.getElementById('inp-address').value.trim() || '사용자 제보 위치';
         const hours = document.getElementById('inp-hours').value.trim() || '영업시간 미확인';
         const is_24h = document.getElementById('inp-24h').checked;
-        const payments = Array.from(document.querySelectorAll('input[name="payment"]:checked')).map(i => i.value);
+        const pinColorEl = document.querySelector('input[name="pin_color"]:checked');
+        const pin_color = pinColorEl ? pinColorEl.value : '#1D1D1F';
         const machines = Array.from(document.querySelectorAll('input[name="machine"]:checked')).map(i => i.value);
         const rawPrizes = document.getElementById('inp-prizes').value.trim();
         const prizes = rawPrizes ? rawPrizes.split(',').map(x => x.trim()).filter(Boolean) : ['신규 제보 경품'];
@@ -1361,32 +1788,26 @@
           lng: state.pickedCoords.lng,
           hours,
           is_24h,
-          payments: payments.length ? payments : ['현금'],
+          pin_color,
           machines: machines.length ? machines : ['일반 3발'],
           prizes,
           has_new_prize: true,
           created_by: state.user.id
         }).select().single();
 
-        if (error) { console.error('Shop insert error:', error); return showToast('매장 등록 실패: ' + (error.message || error.code || '권한 오류')); }
+        if (error) {
+          console.error('Shop insert error:', error);
+          return showToast('매장 등록 실패: ' + (error.message || error.code || '권한 오류'));
+        }
+        await loadUserSession();
         closeReportModal();
         e.target.reset();
-        await loadUserSession();
         showToast(`'${name}' 매장이 등록되었습니다! (+50 EXP)`);
         await loadShopsFromSupabase();
         if (data && data.id) selectShop(data.id, true);
       });
 
       document.getElementById('header-login-btn').addEventListener('click', () => openLoginModal(''));
-      document.getElementById('header-user-btn').addEventListener('click', async () => {
-        await sb.auth.signOut();
-        state.user = null;
-        state.favorites = new Set();
-        state.likedReviews = new Set();
-        updateAuthUI();
-        renderAll();
-        showToast('카카오 로그아웃 되었습니다.');
-      });
       document.getElementById('close-login-modal').addEventListener('click', closeLoginModal);
       document.getElementById('kakao-login-confirm-btn').addEventListener('click', async () => {
         const { error } = await sb.auth.signInWithOAuth({
