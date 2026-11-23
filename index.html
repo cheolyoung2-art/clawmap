@@ -337,11 +337,6 @@
               <span class="text-xs font-medium">인디고</span>
             </label>
             <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_color" value="#EC4899" class="sr-only" />
-              <span class="w-4 h-4 rounded-full bg-[#EC4899]"></span>
-              <span class="text-xs font-medium">핑크</span>
-            </label>
-            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
               <input type="radio" name="pin_color" value="#0EA5E9" class="sr-only" />
               <span class="w-4 h-4 rounded-full bg-[#0EA5E9]"></span>
               <span class="text-xs font-medium">스카이</span>
@@ -448,6 +443,7 @@
 
     const DEFAULT_CENTER = { lat: 35.87059, lng: 128.59802 };
     const CLOSED_REPORT_THRESHOLD = 5;
+    const MAX_VISIBLE_PINS = 60;
     const SHOP_DELETE_WINDOW_MS = 12 * 60 * 60 * 1000;
     const FAV_SEEN_KEY = 'clawmap_fav_seen_v1';
 
@@ -862,7 +858,10 @@
 
     function renderMarkers() {
       const filtered = getFilteredShops(false);
-      document.getElementById('map-count-label').textContent = `근처 매장 ${filtered.length}곳`;
+      const visibleShops = filtered.slice(0, MAX_VISIBLE_PINS);
+      document.getElementById('map-count-label').textContent = filtered.length > MAX_VISIBLE_PINS
+        ? `근처 매장 ${filtered.length}곳 (최대 ${MAX_VISIBLE_PINS}곳 표시)`
+        : `근처 매장 ${filtered.length}곳`;
       document.getElementById('desk-list-count').textContent = filtered.length;
       document.getElementById('mob-list-count').textContent = filtered.length;
       document.getElementById('desk-fav-count').textContent = state.favorites.size;
@@ -875,9 +874,12 @@
       }
       overlaysById.clear();
 
-      filtered.forEach(shop => {
+      visibleShops.forEach(shop => {
         const suspected = isSuspectedClosed(shop);
         const isSelected = shop.id === state.selectedShopId;
+        const isFav = state.favorites.has(shop.id);
+        const borderColor = isFav ? '#EF4444' : '#FFFFFF';
+        const borderWidth = isFav ? '2.8' : '2.4';
         const baseColor = shop.pin_color || '#1D1D1F';
         const fill = suspected ? '#94A3B8' : (isSelected ? '#4F46E5' : baseColor);
         const isGachaOnly = (shop.machines || []).includes('가챠/캡슐') && !(shop.machines || []).includes('대형 크레인');
@@ -894,7 +896,7 @@
 
         const bearSvg = `
           <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <g stroke="#FFFFFF" stroke-width="2.4" stroke-linejoin="round">
+            <g stroke="${borderColor}" stroke-width="${borderWidth}" stroke-linejoin="round">
               <circle cx="10" cy="10" r="4.2" fill="${fill}"/>
               <circle cx="26" cy="10" r="4.2" fill="${fill}"/>
               <circle cx="18" cy="16.5" r="8.8" fill="${fill}"/>
@@ -921,7 +923,7 @@
 
         const gachaSvg = `
           <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="18" cy="18" r="12" fill="${fill}" stroke="#FFFFFF" stroke-width="2.4"/>
+            <circle cx="18" cy="18" r="12" fill="${fill}" stroke="${borderColor}" stroke-width="${borderWidth}"/>
             <path d="M7.2 18H28.8" stroke="#FFFFFF" stroke-width="2.2"/>
             <circle cx="18" cy="18" r="3.4" fill="#FFFFFF"/>
             <circle cx="18" cy="18" r="1.6" fill="${fill}"/>
@@ -1002,9 +1004,17 @@
                 <span class="text-[11px] font-bold text-amber-800">📝 내 즐겨찾기 메모</span>
               </div>
               <div class="flex gap-1.5">
-                <input name="memo" type="text" maxlength="100" value="${escapeHtml(favMemo)}" placeholder="예: 안쪽 3번 기계 집게 힘 좋음" class="flex-1 bg-white border border-amber-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-amber-400" />
+                <input name="memo" type="text" maxlength="100" placeholder="${favMemo ? '새 메모 입력 시 기존 메모가 덮어써집니다' : '예: 안쪽 3번 기계 집게 힘 좋음'}" class="flex-1 bg-white border border-amber-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-amber-400" />
                 <button type="submit" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-semibold shrink-0 transition">저장</button>
               </div>
+              ${favMemo ? `
+                <div class="flex items-center justify-between gap-2 bg-white/90 border border-amber-200/70 rounded-lg px-2.5 py-1">
+                  <span class="text-xs text-slate-800 truncate">${escapeHtml(favMemo)}</span>
+                  <button type="button" data-action="delete-fav-memo" data-id="${shop.id}" class="shrink-0 text-slate-400 hover:text-rose-600 p-0.5 transition" aria-label="메모 삭제" title="메모 삭제">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              ` : ''}
             </form>
           ` : ''}
 
@@ -1565,6 +1575,14 @@
         requireKakaoAuth('후기 삭제는 카카오 로그인이 필요합니다.', () => deleteReview(reviewId, id));
       } else if (action === 'delete-shop') {
         requireKakaoAuth('매장 삭제는 카카오 로그인이 필요합니다.', () => deleteOwnShop(id));
+      } else if (action === 'delete-fav-memo') {
+        requireKakaoAuth('즐겨찾기 메모 삭제는 카카오 로그인이 필요합니다.', async () => {
+          const { error } = await sb.from('favorites').update({ memo: '' }).eq('shop_id', id).eq('user_id', state.user.id);
+          if (error) return showToast('메모 삭제 실패: ' + (error.message || '오류'));
+          state.favoriteMemos.set(id, '');
+          showToast('메모가 삭제되었습니다.');
+          renderPanels();
+        });
       } else if (action === 'report-closed') {
         requireKakaoAuth('폐업/수정 신고는 카카오 로그인이 필요합니다.', () => reportShopClosed(id));
       }
@@ -1576,11 +1594,13 @@
         e.preventDefault();
         const shopId = memoForm.getAttribute('data-id');
         const memo = memoForm.querySelector('[name="memo"]').value.trim();
+        if (!memo) return showToast('저장할 메모 내용을 입력해 주세요.');
         requireKakaoAuth('즐겨찾기 메모 저장은 카카오 로그인이 필요합니다.', async () => {
           const { error } = await sb.from('favorites').update({ memo }).eq('shop_id', shopId).eq('user_id', state.user.id);
           if (error) return showToast('메모 저장 실패: ' + (error.message || '오류'));
           state.favoriteMemos.set(shopId, memo);
           showToast('즐겨찾기 메모가 저장되었습니다.');
+          renderPanels();
         });
         return;
       }
