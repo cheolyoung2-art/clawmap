@@ -1177,7 +1177,8 @@
           content,
           photo_url: photoUrl
         });
-        if (error) return showToast('후기 등록에 실패했습니다.');
+        if (error) { console.error('Review insert error:', error); return showToast('후기 등록 실패: ' + (error.message || error.code || '권한 오류')); }
+        await loadUserSession();
         showToast('한줄 후기가 등록되었습니다!');
         await loadShopsFromSupabase();
       });
@@ -1328,10 +1329,11 @@
           created_by: state.user.id
         }).select().single();
 
-        if (error) return showToast('매장 등록에 실패했습니다.');
+        if (error) { console.error('Shop insert error:', error); return showToast('매장 등록 실패: ' + (error.message || error.code || '권한 오류')); }
         closeReportModal();
         e.target.reset();
-        showToast(`'${name}' 매장이 등록되었습니다!`);
+        await loadUserSession();
+        showToast(`'${name}' 매장이 등록되었습니다! (+50 EXP)`);
         await loadShopsFromSupabase();
         if (data && data.id) selectShop(data.id, true);
       });
