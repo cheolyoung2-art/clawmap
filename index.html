@@ -176,7 +176,7 @@
         </button>
       </div>
 
-      <div id="panel-content" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3"></div>
+      <div id="panel-content" class="flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-2"></div>
     </aside>
 
     <!-- Map Area -->
@@ -203,11 +203,10 @@
       </div>
 
       <!-- Pick Location Banner (Draggable Flag) -->
-      <div id="pick-mode-banner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-[500] bg-indigo-600 text-white px-3.5 py-2.5 rounded-2xl shadow-lg flex items-center gap-2.5 max-w-[94%]">
-        <i data-lucide="flag" class="w-4 h-4 shrink-0"></i>
-        <span class="text-xs font-medium leading-snug">깃발을 드래그하거나 지도를 눌러 위치를 맞춘 뒤 결정하세요</span>
-        <button id="confirm-pick-btn" type="button" class="text-xs font-bold bg-white text-indigo-700 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition shrink-0">여기로 결정</button>
-        <button id="cancel-pick-btn" type="button" class="text-xs font-semibold bg-white/20 hover:bg-white/30 px-2 py-1 rounded-lg transition shrink-0">취소</button>
+      <div id="pick-mode-banner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-[500] bg-indigo-600/95 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2">
+        <i data-lucide="flag" class="w-3.5 h-3.5 shrink-0"></i>
+        <button id="confirm-pick-btn" type="button" class="text-xs font-bold bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-1 rounded-full transition shrink-0">선택</button>
+        <button id="cancel-pick-btn" type="button" class="text-xs font-semibold bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-full transition shrink-0">취소</button>
       </div>
 
       <!-- Bottom-Right Map Controls -->
@@ -240,7 +239,7 @@
             </button>
           </div>
         </div>
-        <div id="mobile-sheet-body" class="overflow-y-auto p-4 space-y-3"></div>
+        <div id="mobile-sheet-body" class="overflow-y-auto p-3 space-y-2"></div>
       </div>
     </section>
   </main>
@@ -1195,32 +1194,32 @@
         const newFavReviews = state.favNewCounts.get(shop.id) || 0;
 
         return `
-          <div data-action="select-shop" data-id="${shop.id}" class="cursor-pointer rounded-2xl border p-2.5 transition ${isSelected ? 'border-indigo-500 bg-indigo-50/40 ring-2 ring-indigo-100' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'}">
-            <div class="flex items-start justify-between gap-2">
-              <div class="min-w-0">
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <h3 class="text-sm font-bold text-slate-900 truncate">${escapeHtml(shop.name)}</h3>
-                  ${suspected ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">폐업 의심</span>' : ''}
-                  ${newFavReviews > 0 ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600">새 후기 ${newFavReviews}</span>` : ''}
-                </div>
-                <p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(shop.address)}</p>
+          <div data-action="select-shop" data-id="${shop.id}" class="cursor-pointer rounded-xl border px-2.5 py-1.5 transition ${isSelected ? 'border-indigo-500 bg-indigo-50/40 ring-2 ring-indigo-100' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'}">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0 flex items-baseline gap-1.5 flex-1">
+                <h3 class="text-xs font-bold text-slate-900 truncate shrink-0 max-w-[55%]">${escapeHtml(shop.name)}</h3>
+                <p class="text-[11px] text-slate-400 truncate">${escapeHtml(shop.address)}</p>
+                ${suspected ? '<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-slate-200 text-slate-700 shrink-0">폐업의심</span>' : ''}
+                ${newFavReviews > 0 ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 shrink-0">새후기 ${newFavReviews}</span>` : ''}
               </div>
-              <button type="button" data-action="toggle-fav" data-id="${shop.id}" class="shrink-0 p-1.5 rounded-lg hover:bg-rose-50 ${isFav ? 'text-rose-500' : 'text-slate-300 hover:text-rose-400'}" aria-label="즐겨찾기 토글">
-                <i data-lucide="heart" class="w-4 h-4 ${isFav ? 'fill-rose-500' : ''}"></i>
+              <button type="button" data-action="toggle-fav" data-id="${shop.id}" class="shrink-0 p-1 rounded-lg hover:bg-rose-50 ${isFav ? 'text-rose-500' : 'text-slate-300 hover:text-rose-400'}" aria-label="즐겨찾기 토글">
+                <i data-lucide="heart" class="w-3.5 h-3.5 ${isFav ? 'fill-rose-500' : ''}"></i>
               </button>
             </div>
-            <div class="flex items-center gap-2 mt-2 text-[11px] text-slate-600 flex-wrap">
-              ${formatDistance(shop) ? `<span class="font-semibold text-blue-600">${formatDistance(shop)}</span><span>·</span>` : ''}
-              <span class="font-semibold text-amber-600">★ ${avgRating}</span>
-              <span>·</span>
-              <span class="font-semibold text-indigo-600">난이도 ${avgDifficulty}</span>
-              <span>·</span>
-              <span>${escapeHtml(shop.hours)}</span>
-              <span>·</span>
-              <span>후기 ${(shop.reviews || []).length}</span>
-            </div>
-            <div class="flex flex-wrap gap-1 mt-2">
-              ${(shop.prizes || []).slice(0, 3).map(p => `<span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">#${escapeHtml(p)}</span>`).join('')}
+            <div class="flex items-center justify-between gap-2 mt-1 text-[10px] text-slate-600">
+              <div class="flex items-center gap-1.5 truncate">
+                ${formatDistance(shop) ? `<span class="font-semibold text-blue-600">${formatDistance(shop)}</span><span>·</span>` : ''}
+                <span class="font-semibold text-amber-600">★${avgRating}</span>
+                <span>·</span>
+                <span class="font-semibold text-indigo-600">난${avgDifficulty}</span>
+                <span>·</span>
+                <span>${escapeHtml(shop.hours)}</span>
+                <span>·</span>
+                <span>후기${(shop.reviews || []).length}</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                ${(shop.prizes || []).slice(0, 2).map(p => `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 max-w-[70px] truncate">#${escapeHtml(p)}</span>`).join('')}
+              </div>
             </div>
           </div>
         `;
@@ -1279,16 +1278,12 @@
         sidePanel.classList.remove('flex');
         mapSection.classList.remove('hidden');
 
-        mobileSheet.classList.remove('max-h-[54%]', 'max-h-[36%]', 'h-[90%]', 'max-h-[90%]');
+        mobileSheet.classList.remove('max-h-[54%]', 'h-[54%]', 'max-h-[36%]', 'h-[90%]', 'max-h-[90%]');
         if (state.sheetExpanded) {
           mobileSheet.classList.add('h-[90%]', 'max-h-[90%]');
           expandBtn.textContent = '지도와 보기';
-        } else if (selectedShop) {
-          mobileSheet.classList.add('max-h-[54%]');
-          expandBtn.textContent = '전체 보기';
         } else {
-          // List & Favorites sheet height reduced to 2/3 (36%)
-          mobileSheet.classList.add('max-h-[36%]');
+          mobileSheet.classList.add('h-[54%]', 'max-h-[54%]');
           expandBtn.textContent = '전체 보기';
         }
 
