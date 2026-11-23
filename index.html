@@ -309,21 +309,17 @@
           <input id="inp-name" type="text" required placeholder="예: 동성로 포켓 크레인" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-indigo-500 outline-none" />
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <div>
             <label for="inp-address" class="block text-xs font-semibold text-slate-700 mb-1">위치 / 도로명 주소</label>
             <input id="inp-address" type="text" placeholder="예: 대구 중구 동성로2길 80" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-indigo-500 outline-none" />
           </div>
           <div>
-            <label for="inp-hours" class="block text-xs font-semibold text-slate-700 mb-1">영업시간 선택</label>
-            <select id="inp-hours" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:border-indigo-500 outline-none">
-              <option value="24시간 영업" selected>24시간 영업</option>
-              <option value="10:00 ~ 24:00">10:00 ~ 24:00</option>
-              <option value="11:00 ~ 23:00">11:00 ~ 23:00</option>
-              <option value="12:00 ~ 02:00">12:00 ~ 02:00 (심야)</option>
-              <option value="주말·공휴일 중심">주말·공휴일 중심</option>
-              <option value="영업시간 미확인">영업시간 미확인</option>
-            </select>
+            <span class="block text-xs font-semibold text-slate-700 mb-1">영업시간</span>
+            <label class="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 bg-white cursor-pointer hover:bg-slate-50 text-sm">
+              <input type="checkbox" id="inp-24h" checked class="w-4 h-4 accent-indigo-600" />
+              <span class="font-medium text-slate-800">24시간 운영</span>
+            </label>
           </div>
         </div>
 
@@ -362,12 +358,6 @@
               <span class="text-xs font-medium">앰버</span>
             </label>
           </div>
-        </div>
-
-        <div>
-          <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 text-xs">
-            <input type="checkbox" id="inp-24h" checked class="accent-indigo-600" /> 24시간 운영
-          </label>
         </div>
 
         <div>
@@ -485,6 +475,7 @@
       mobTab: 'map',
       sheetExpanded: false,
       favorites: new Set(),
+      favoriteMemos: new Map(),
       likedReviews: new Set(),
       myReports: new Set(),
       favNewCounts: new Map(),
@@ -579,9 +570,23 @@
       return shop.status === 'suspected_closed' || (shop.report_count || 0) >= CLOSED_REPORT_THRESHOLD;
     }
 
+    function getDeleteRemainingMs(shop) {
+      if (!state.user || !shop || shop.created_by !== state.user.id || !shop.created_at) return 0;
+      const elapsed = Date.now() - new Date(shop.created_at).getTime();
+      return Math.max(0, SHOP_DELETE_WINDOW_MS - elapsed);
+    }
+
     function canDeleteOwnShop(shop) {
-      if (!state.user || !shop || shop.created_by !== state.user.id || !shop.created_at) return false;
-      return (Date.now() - new Date(shop.created_at).getTime()) <= SHOP_DELETE_WINDOW_MS;
+      return getDeleteRemainingMs(shop) > 0;
+    }
+
+    function formatRemainingTime(ms) {
+      if (ms <= 0) return '만료됨';
+      const totalSec = Math.floor(ms / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
     function getAvgMetrics(shop) {
@@ -810,6 +815,7 @@
       if (!session || !session.user) {
         state.user = null;
         state.favorites = new Set();
+        state.favoriteMemos = new Map();
         state.likedReviews = new Set();
         state.myReports = new Set();
         updateAuthUI();
@@ -824,11 +830,12 @@
         exp: (profile && profile.exp) || 0
       };
       const [favRes, likeRes, repRes] = await Promise.all([
-        sb.from('favorites').select('shop_id').eq('user_id', uid),
+        sb.from('favorites').select('shop_id, memo').eq('user_id', uid),
         sb.from('review_likes').select('review_id').eq('user_id', uid),
         sb.from('shop_reports').select('shop_id').eq('user_id', uid)
       ]);
       state.favorites = new Set((favRes.data || []).map(r => r.shop_id));
+      state.favoriteMemos = new Map((favRes.data || []).map(r => [r.shop_id, r.memo || '']));
       state.likedReviews = new Set((likeRes.data || []).map(r => r.review_id));
       state.myReports = new Set((repRes.data || []).map(r => r.shop_id));
       updateAuthUI();
@@ -881,10 +888,10 @@
         const size = Math.round(36 * scale);
 
         const { avgRating, avgDifficulty } = getAvgMetrics(shop);
-        // Star size reduced to 3/4 (~7px at 1.0 to ~14px at 5.0)
-        const starPx = avgRating === '-' ? 0 : Math.round((7 + Number(avgRating) * 2.2) * 0.75);
-        // Difficulty label neatly inside bear belly
-        const bellyDiffText = avgDifficulty === '-' ? '' : Number(avgDifficulty) <= 2.3 ? '쉬움' : Number(avgDifficulty) <= 3.6 ? '보통' : '어려움';
+        const starCount = avgRating === '-' ? 0 : Math.max(1, Math.min(5, Math.round(Number(avgRating))));
+        const starPx = starCount === 5 ? 12 : 5.5;
+        const starText = starCount > 0 ? '★'.repeat(starCount) : '';
+        const bellyDiffText = avgDifficulty === '-' ? '' : Number(avgDifficulty).toFixed(1);
 
         const bearSvg = `
           <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -910,7 +917,7 @@
             <circle cx="21" cy="15.2" r="1.15" fill="#FFFFFF"/>
             <ellipse cx="18" cy="18.2" rx="2.6" ry="2" fill="#FFFFFF" fill-opacity="0.92"/>
             <circle cx="18" cy="17.7" r="0.9" fill="${fill}"/>
-            ${bellyDiffText ? `<text x="18" y="27.5" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-size="3.9" font-weight="700" font-family="sans-serif">${bellyDiffText}</text>` : ''}
+            ${bellyDiffText ? `<text x="18" y="27.5" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-size="4.6" font-weight="700" font-family="sans-serif">${bellyDiffText}</text>` : ''}
           </svg>`;
 
         const gachaSvg = `
@@ -919,14 +926,14 @@
             <path d="M7.2 18H28.8" stroke="#FFFFFF" stroke-width="2.2"/>
             <circle cx="18" cy="18" r="3.4" fill="#FFFFFF"/>
             <circle cx="18" cy="18" r="1.6" fill="${fill}"/>
-            ${bellyDiffText ? `<text x="18" y="25.2" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-size="3.9" font-weight="700" font-family="sans-serif">${bellyDiffText}</text>` : ''}
+            ${bellyDiffText ? `<text x="18" y="25.2" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-size="4.6" font-weight="700" font-family="sans-serif">${bellyDiffText}</text>` : ''}
           </svg>`;
 
         const el = document.createElement('div');
         el.className = `claw-pin ${isNewHighlight ? 'new-prize' : ''} ${isSelected ? 'selected' : ''}`;
         if (suspected) el.style.opacity = '0.8';
         el.innerHTML = `
-          ${starPx > 0 ? `<span class="pin-star-badge" style="font-size:${starPx}px;">★</span>` : ''}
+          ${starCount > 0 ? `<span class="pin-star-badge" style="font-size:${starPx}px;white-space:nowrap;letter-spacing:${starCount === 5 ? '-1px' : '0px'};">${starText}</span>` : ''}
           <div style="width:${size}px;height:${size}px;position:relative;">
             ${isGachaOnly ? gachaSvg : bearSvg}
           </div>
@@ -950,14 +957,16 @@
 
     function buildDetailHtml(shop, includeBackButton) {
       const isFav = state.favorites.has(shop.id);
+      const favMemo = state.favoriteMemos.get(shop.id) || '';
       const { avgRating, avgDifficulty } = getAvgMetrics(shop);
       const diffLabel = avgDifficulty === '-' ? '정보 없음' : Number(avgDifficulty) <= 2.3 ? '쉬움' : Number(avgDifficulty) <= 3.6 ? '보통' : '어려움';
       const suspected = isSuspectedClosed(shop);
       const alreadyReported = state.myReports.has(shop.id);
-      const canDeleteShop = canDeleteOwnShop(shop);
+      const remainMs = getDeleteRemainingMs(shop);
+      const canDeleteShop = remainMs > 0;
 
       return `
-        <div class="space-y-4" data-detail-shop="${shop.id}">
+        <div class="space-y-3" data-detail-shop="${shop.id}">
           ${includeBackButton ? `
             <button type="button" data-action="back-to-list" class="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition">
               <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> 목록으로 돌아가기
@@ -965,7 +974,7 @@
           ` : ''}
 
           <div class="flex items-start justify-between gap-2">
-            <div>
+            <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-1.5 mb-1">
                 ${shop.has_new_prize ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">✨ 신상 경품</span>' : ''}
                 ${suspected ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">폐업 의심</span>' : ''}
@@ -973,11 +982,14 @@
               <h3 class="text-base font-bold text-slate-900 leading-snug">${escapeHtml(shop.name)}</h3>
               <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(shop.address)}</p>
             </div>
-            <div class="flex items-center gap-1 shrink-0">
+            <div class="flex items-start gap-1.5 shrink-0">
               ${canDeleteShop ? `
-                <button type="button" data-action="delete-shop" data-id="${shop.id}" class="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold transition" title="등록 후 12시간 이내 삭제 가능">
-                  제보 삭제
-                </button>
+                <div class="flex flex-col items-center">
+                  <button type="button" data-action="delete-shop" data-id="${shop.id}" class="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold transition">
+                    제보 삭제
+                  </button>
+                  <span data-delete-countdown="${shop.id}" class="text-[9px] font-mono text-rose-500 mt-0.5">${formatRemainingTime(remainMs)}</span>
+                </div>
               ` : ''}
               <button type="button" data-action="toggle-fav" data-id="${shop.id}" class="p-2 rounded-xl border transition ${isFav ? 'bg-rose-50 border-rose-200 text-rose-500' : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-rose-500'}" aria-label="즐겨찾기">
                 <i data-lucide="heart" class="w-4 h-4 ${isFav ? 'fill-rose-500' : ''}"></i>
@@ -985,37 +997,49 @@
             </div>
           </div>
 
+          ${isFav ? `
+            <form data-action="save-fav-memo" data-id="${shop.id}" class="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-amber-800">📝 내 즐겨찾기 메모</span>
+              </div>
+              <div class="flex gap-1.5">
+                <input name="memo" type="text" maxlength="100" value="${escapeHtml(favMemo)}" placeholder="예: 안쪽 3번 기계 집게 힘 좋음" class="flex-1 bg-white border border-amber-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-amber-400" />
+                <button type="submit" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-semibold shrink-0 transition">저장</button>
+              </div>
+            </form>
+          ` : ''}
+
           <div class="grid grid-cols-3 gap-2">
-            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-center">
-              <div class="text-[11px] text-slate-500">평점</div>
-              <div class="text-sm font-bold text-slate-900 mt-0.5">★ ${avgRating}</div>
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2 text-center">
+              <div class="text-[10px] text-slate-500">평점</div>
+              <div class="text-xs font-bold text-slate-900 mt-0.5">★ ${avgRating}</div>
             </div>
-            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-center">
-              <div class="text-[11px] text-slate-500">체감 난이도</div>
-              <div class="text-sm font-bold text-indigo-700 mt-0.5">${diffLabel} (${avgDifficulty})</div>
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2 text-center">
+              <div class="text-[10px] text-slate-500">체감 난이도</div>
+              <div class="text-xs font-bold text-indigo-700 mt-0.5">${diffLabel} (${avgDifficulty})</div>
             </div>
-            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-center">
-              <div class="text-[11px] text-slate-500">영업시간</div>
-              <div class="text-xs font-bold text-slate-800 mt-1 truncate">${escapeHtml(shop.hours)}</div>
-            </div>
-          </div>
-
-          <div class="space-y-2.5">
-            <div>
-              <div class="text-[11px] font-semibold text-slate-500 mb-1.5">보유 기계</div>
-              <div class="flex flex-wrap gap-1.5">
-                ${(shop.machines || []).map(m => `<span class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-medium">${escapeHtml(m)}</span>`).join('')}
-              </div>
-            </div>
-            <div>
-              <div class="text-[11px] font-semibold text-slate-500 mb-1.5">최근 목격된 경품</div>
-              <div class="flex flex-wrap gap-1.5">
-                ${(shop.prizes || []).map(pr => `<span class="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 font-medium">#${escapeHtml(pr)}</span>`).join('')}
-              </div>
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2 text-center">
+              <div class="text-[10px] text-slate-500">영업시간</div>
+              <div class="text-[11px] font-bold text-slate-800 mt-0.5 truncate">${escapeHtml(shop.hours)}</div>
             </div>
           </div>
 
-          <div class="flex items-center gap-2 pt-1">
+          <div class="space-y-2">
+            <div>
+              <div class="text-[11px] font-semibold text-slate-500 mb-1">보유 기계</div>
+              <div class="flex flex-wrap gap-1">
+                ${(shop.machines || []).map(m => `<span class="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-medium">${escapeHtml(m)}</span>`).join('')}
+              </div>
+            </div>
+            <div>
+              <div class="text-[11px] font-semibold text-slate-500 mb-1">최근 목격된 경품</div>
+              <div class="flex flex-wrap gap-1">
+                ${(shop.prizes || []).map(pr => `<span class="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-medium">#${escapeHtml(pr)}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
             <button type="button" data-action="focus-map" data-id="${shop.id}" class="flex-1 py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5">
               <i data-lucide="navigation" class="w-3.5 h-3.5"></i> 지도에서 보기
             </button>
@@ -1029,62 +1053,54 @@
             </button>
           </div>
 
-          <button type="button" data-action="banner-click" class="w-full min-h-[70px] text-left rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-fuchsia-50 px-3.5 py-4 flex items-center justify-between gap-3 hover:border-indigo-300 transition shadow-sm">
-            <div class="flex items-center gap-2.5 min-w-0">
+          <button type="button" data-action="banner-click" class="w-full min-h-[48px] text-left rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-fuchsia-50 px-3 py-2 flex items-center justify-between gap-2 hover:border-indigo-300 transition shadow-sm">
+            <div class="flex items-center gap-2 min-w-0">
               <span class="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-600">AD</span>
               <div class="min-w-0">
                 <div class="text-xs font-bold text-slate-800 truncate">매장 상세 배너 · 제휴 광고 자리</div>
-                <div class="text-[10px] text-slate-500 truncate">AdMob 네이티브·배너 또는 주변 매장 프로모션 영역</div>
               </div>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
           </button>
 
-          <div class="border-t border-slate-200 pt-3 space-y-3">
+          <div class="border-t border-slate-200 pt-2.5 space-y-2">
             <div class="flex items-center justify-between">
               <h4 class="text-xs font-bold text-slate-800">한줄 후기 (${(shop.reviews || []).length})</h4>
             </div>
 
-            <form data-action="submit-review" data-id="${shop.id}" class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
-              <div class="grid grid-cols-2 gap-2">
-                <label class="text-[11px] font-medium text-slate-600">
-                  평점
-                  <select name="rating" class="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
-                    <option value="5">★★★★★ (5점)</option>
-                    <option value="4" selected>★★★★☆ (4점)</option>
-                    <option value="3">★★★☆☆ (3점)</option>
-                    <option value="2">★★☆☆☆ (2점)</option>
-                    <option value="1">★☆☆☆☆ (1점)</option>
-                  </select>
-                </label>
-                <label class="text-[11px] font-medium text-slate-600">
-                  체감 난이도
-                  <select name="difficulty" class="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
-                    <option value="1">1 - 매우 쉬움</option>
-                    <option value="2" selected>2 - 무난함</option>
-                    <option value="3">3 - 보통</option>
-                    <option value="4">4 - 다소 어려움</option>
-                    <option value="5">5 - 매우 어려움</option>
-                  </select>
-                </label>
+            <form data-action="submit-review" data-id="${shop.id}" class="bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-1.5">
+              <div class="grid grid-cols-2 gap-1.5">
+                <select name="rating" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px]">
+                  <option value="5">★ 5점</option>
+                  <option value="4" selected>★ 4점</option>
+                  <option value="3">★ 3점</option>
+                  <option value="2">★ 2점</option>
+                  <option value="1">★ 1점</option>
+                </select>
+                <select name="difficulty" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px]">
+                  <option value="1">난이도 1 (매우 쉬움)</option>
+                  <option value="2" selected>난이도 2 (무난)</option>
+                  <option value="3">난이도 3 (보통)</option>
+                  <option value="4">난이도 4 (어려움)</option>
+                  <option value="5">난이도 5 (매우 어려움)</option>
+                </select>
               </div>
               <div class="flex gap-1.5">
-                <input name="text" type="text" placeholder="한줄 후기 또는 사진만으로도 등록할 수 있어요" class="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-indigo-400" />
-                <label class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-semibold shrink-0 cursor-pointer flex items-center gap-1 transition" title="사진 첨부">
+                <input name="text" type="text" placeholder="한줄 후기 또는 사진 등록" class="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-indigo-400" />
+                <label class="px-2 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 text-[11px] font-semibold shrink-0 cursor-pointer flex items-center gap-1 transition" title="사진 첨부">
                   <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-                  <span class="hidden sm:inline">사진</span>
                   <input type="file" name="photo" accept="image/*" class="hidden" />
                 </label>
-                <button type="submit" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition">등록</button>
+                <button type="submit" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition">등록</button>
               </div>
-              <div data-role="photo-preview" class="hidden items-center gap-2 pt-1">
-                <img src="" alt="첨부 미리보기" class="w-14 h-14 rounded-lg object-cover border border-slate-200 shrink-0" />
-                <button type="button" data-action="clear-review-photo" class="text-[11px] font-semibold text-rose-600 hover:underline px-1.5">삭제</button>
+              <div data-role="photo-preview" class="hidden items-center gap-2 pt-0.5">
+                <img src="" alt="첨부 미리보기" class="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
+                <button type="button" data-action="clear-review-photo" class="text-[11px] font-semibold text-rose-600 hover:underline px-1">삭제</button>
               </div>
             </form>
 
-            <div class="space-y-2">
-              ${(shop.reviews || []).length === 0 ? '<p class="text-xs text-slate-400 text-center py-3">아직 후기가 없습니다. 첫 후기를 남겨보세요!</p>' : (shop.reviews || []).map(r => {
+            <div class="space-y-1.5">
+              ${(shop.reviews || []).length === 0 ? '<p class="text-xs text-slate-400 text-center py-2">아직 후기가 없습니다. 첫 후기를 남겨보세요!</p>' : (shop.reviews || []).map(r => {
                 const isLiked = state.likedReviews.has(r.id);
                 const isOwnReview = state.user && r.user_id === state.user.id;
                 const nickname = (r.profiles && r.profiles.nickname) || '뽑기유저';
@@ -1092,31 +1108,34 @@
                 const lv = getLevelInfo(exp);
                 const dateTimeStr = formatDateTime(r.created_at);
                 return `
-                  <div class="bg-white border border-slate-100 rounded-xl p-2.5 shadow-sm">
-                    <div class="flex items-center justify-between gap-2 text-[11px] text-slate-500 mb-1 flex-wrap">
-                      <div class="flex items-center gap-1.5 min-w-0">
+                  <div class="bg-white border border-slate-100 rounded-xl p-2 shadow-sm space-y-1">
+                    <div class="flex items-center justify-between gap-1.5 text-[10px] text-slate-500 flex-wrap">
+                      <div class="flex items-center gap-1 min-w-0">
                         <span class="font-semibold text-slate-800 truncate">${escapeHtml(nickname)}</span>
-                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md ${lv.badgeClass} shrink-0">Lv.${lv.level} ${lv.title}</span>
+                        <span class="font-bold px-1 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0">Lv.${lv.level}</span>
                       </div>
-                      <span class="shrink-0">★ ${r.rating} · 난이도 ${r.difficulty}/5 · ${escapeHtml(dateTimeStr)}</span>
+                      <span class="shrink-0">★${r.rating} · 난${r.difficulty} · ${escapeHtml(dateTimeStr)}</span>
                     </div>
-                    ${r.content ? `<p class="text-xs text-slate-700 leading-relaxed">${escapeHtml(r.content)}</p>` : ''}
-                    ${r.photo_url ? `
-                      <button type="button" data-action="view-photo" data-photo="${escapeHtml(r.photo_url)}" class="${r.content ? 'mt-2' : 'mt-1'} block group">
-                        <img src="${escapeHtml(r.photo_url)}" alt="후기 사진" class="w-24 h-24 object-cover rounded-xl border border-slate-200 group-hover:opacity-90 transition" />
-                      </button>
-                    ` : ''}
-                    <div class="mt-2 flex items-center justify-end gap-1.5">
-                      ${isOwnReview ? `
-                        <button type="button" data-action="delete-review" data-id="${shop.id}" data-review-id="${r.id}" class="px-2 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold transition">
-                          삭제
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="min-w-0 flex-1">
+                        ${r.content ? `<p class="text-xs text-slate-700 leading-snug">${escapeHtml(r.content)}</p>` : ''}
+                        ${r.photo_url ? `
+                          <button type="button" data-action="view-photo" data-photo="${escapeHtml(r.photo_url)}" class="mt-1 block group">
+                            <img src="${escapeHtml(r.photo_url)}" alt="후기 사진" class="w-16 h-16 object-cover rounded-lg border border-slate-200 group-hover:opacity-90 transition" />
+                          </button>
+                        ` : ''}
+                      </div>
+                      <div class="flex items-center gap-1 shrink-0">
+                        ${isOwnReview ? `
+                          <button type="button" data-action="delete-review" data-id="${shop.id}" data-review-id="${r.id}" class="px-1.5 py-0.5 rounded border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-semibold transition">
+                            삭제
+                          </button>
+                        ` : ''}
+                        <button type="button" data-action="toggle-review-like" data-id="${shop.id}" data-review-id="${r.id}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-semibold transition ${isLiked ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}">
+                          <i data-lucide="thumbs-up" class="w-2.5 h-2.5 ${isLiked ? 'fill-indigo-600 text-indigo-600' : ''}"></i>
+                          <span>${Number(r.likes_count || 0)}</span>
                         </button>
-                      ` : ''}
-                      <button type="button" data-action="toggle-review-like" data-id="${shop.id}" data-review-id="${r.id}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${isLiked ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}">
-                        <i data-lucide="thumbs-up" class="w-3 h-3 ${isLiked ? 'fill-indigo-600 text-indigo-600' : ''}"></i>
-                        <span>공감</span>
-                        <span>${Number(r.likes_count || 0)}</span>
-                      </button>
+                      </div>
                     </div>
                   </div>
                 `;
@@ -1129,13 +1148,10 @@
 
     function buildListHtml(shops, emptyText, isFavoritesTab = false) {
       const adBannerSlot = `
-        <button type="button" data-action="banner-click" class="w-full min-h-[70px] text-left rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-fuchsia-50 px-3.5 py-4 flex items-center justify-between gap-3 hover:border-indigo-300 transition shadow-sm">
-          <div class="flex items-center gap-2.5 min-w-0">
+        <button type="button" data-action="banner-click" class="w-full min-h-[46px] text-left rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-fuchsia-50 px-3 py-2 flex items-center justify-between gap-2 hover:border-indigo-300 transition shadow-sm">
+          <div class="flex items-center gap-2 min-w-0">
             <span class="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-600">AD</span>
-            <div class="min-w-0">
-              <div class="text-xs font-bold text-slate-800 truncate">${isFavoritesTab ? '즐겨찾기 상단 배너 · 제휴 광고 자리' : '주변 매장 상단 배너 · 제휴 광고 자리'}</div>
-              <div class="text-[10px] text-slate-500 truncate">AdMob 네이티브·배너 또는 지역 뽑기방 이벤트 홍보 영역</div>
-            </div>
+            <div class="text-xs font-bold text-slate-800 truncate">${isFavoritesTab ? '즐겨찾기 상단 배너 · 제휴 광고' : '주변 매장 상단 배너 · 제휴 광고'}</div>
           </div>
           <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
         </button>
@@ -1179,7 +1195,7 @@
         const newFavReviews = state.favNewCounts.get(shop.id) || 0;
 
         return `
-          <div data-action="select-shop" data-id="${shop.id}" class="cursor-pointer rounded-2xl border p-3.5 transition ${isSelected ? 'border-indigo-500 bg-indigo-50/40 ring-2 ring-indigo-100' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'}">
+          <div data-action="select-shop" data-id="${shop.id}" class="cursor-pointer rounded-2xl border p-2.5 transition ${isSelected ? 'border-indigo-500 bg-indigo-50/40 ring-2 ring-indigo-100' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'}">
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap">
@@ -1560,6 +1576,20 @@
     }
 
     async function handleDelegatedSubmit(e) {
+      const memoForm = e.target.closest('form[data-action="save-fav-memo"]');
+      if (memoForm) {
+        e.preventDefault();
+        const shopId = memoForm.getAttribute('data-id');
+        const memo = memoForm.querySelector('[name="memo"]').value.trim();
+        requireKakaoAuth('즐겨찾기 메모 저장은 카카오 로그인이 필요합니다.', async () => {
+          const { error } = await sb.from('favorites').update({ memo }).eq('shop_id', shopId).eq('user_id', state.user.id);
+          if (error) return showToast('메모 저장 실패: ' + (error.message || '오류'));
+          state.favoriteMemos.set(shopId, memo);
+          showToast('즐겨찾기 메모가 저장되었습니다.');
+        });
+        return;
+      }
+
       const form = e.target.closest('form[data-action="submit-review"]');
       if (!form) return;
       e.preventDefault();
@@ -1856,12 +1886,7 @@
         await loadShopsFromSupabase();
       });
 
-      document.getElementById('inp-hours').addEventListener('change', (e) => {
-        document.getElementById('inp-24h').checked = e.target.value === '24시간 영업';
-      });
-      document.getElementById('inp-24h').addEventListener('change', (e) => {
-        if (e.target.checked) document.getElementById('inp-hours').value = '24시간 영업';
-      });
+
 
       document.getElementById('open-report-btn').addEventListener('click', () => {
         requireKakaoAuth('신규 매장 제보는 카카오 로그인이 필요합니다.', () => openReportModal(false));
@@ -1894,8 +1919,8 @@
         }
 
         const address = document.getElementById('inp-address').value.trim() || '사용자 제보 위치';
-        const hours = document.getElementById('inp-hours').value || '영업시간 미확인';
         const is_24h = document.getElementById('inp-24h').checked;
+        const hours = is_24h ? '24시간 영업' : '일반 영업';
         const pinColorEl = document.querySelector('input[name="pin_color"]:checked');
         const pin_color = pinColorEl ? pinColorEl.value : '#1D1D1F';
         const machines = Array.from(document.querySelectorAll('input[name="machine"]:checked')).map(i => i.value);
@@ -1963,6 +1988,16 @@
         await loadUserSession();
         renderAll();
       });
+
+      setInterval(() => {
+        document.querySelectorAll('[data-delete-countdown]').forEach(el => {
+          const sid = el.getAttribute('data-delete-countdown');
+          const shop = state.shops.find(s => s.id === sid);
+          if (!shop) return;
+          const ms = getDeleteRemainingMs(shop);
+          el.textContent = formatRemainingTime(ms);
+        });
+      }, 1000);
 
       await loadUserSession();
       await loadShopsFromSupabase();
