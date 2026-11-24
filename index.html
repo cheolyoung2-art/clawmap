@@ -150,14 +150,14 @@
     </button>
   </header>
 
-  <!-- Filter Bar (Touch & Mouse Drag Scrollable) -->
-  <div id="filter-scroll-bar" class="bg-white border-b border-slate-200 px-3 sm:px-4 py-2 overflow-x-auto no-scrollbar touch-pan-x shrink-0 z-10 cursor-grab active:cursor-grabbing select-none">
-    <div id="filter-chips" class="inline-flex items-center gap-1.5 w-max">
-      <button type="button" data-filter="all" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-indigo-600 text-white shadow-sm">전체</button>
-      <button type="button" data-filter="24h" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200">🌙 24시간</button>
-      <button type="button" data-filter="newPrize" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200">✨ 신상 경품</button>
-      <button type="button" data-filter="large" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200">🧸 대형 인형</button>
-      <button type="button" data-filter="gacha" class="filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200">💊 가챠/캡슐</button>
+  <!-- Shout Bar: '전체' button + 2-second Live Shout Ticker -->
+  <div id="filter-scroll-bar" class="bg-white border-b border-slate-200 px-3 sm:px-4 py-2 flex items-center gap-2 shrink-0 z-10">
+    <button id="open-shout-btn" type="button" class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shrink-0">
+      전체
+    </button>
+    <div id="shout-ticker" class="flex-1 min-w-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100/90 text-xs text-slate-500 cursor-pointer hover:bg-slate-200/70 transition overflow-hidden">
+      <span id="shout-ticker-badge" class="hidden shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-600 text-white">사자후</span>
+      <span id="shout-ticker-text" class="truncate">전체 버튼을 눌러 동네 사자후를 확인해 보세요</span>
     </div>
   </div>
 
@@ -262,6 +262,39 @@
       <span>즐겨찾기 (<span id="mob-fav-count">0</span>)</span>
     </button>
   </nav>
+
+  <!-- Shout (사자후) Chat Modal -->
+  <div id="shout-modal" class="hidden fixed inset-0 z-[1055] bg-slate-900/55 backdrop-blur-[2px] flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[78vh] flex flex-col overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          </span>
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">동네 사자후 대화창</h2>
+            <p class="text-[10px] text-slate-500">사자후 아이템으로 작성하면 접속자 전체에게 2초간 표시됩니다</p>
+          </div>
+        </div>
+        <button id="close-shout-modal" type="button" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg" aria-label="닫기">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="shout-list-body" class="flex-1 overflow-y-auto p-3.5 space-y-2 bg-slate-50/70 min-h-[220px]">
+        <!-- Populated dynamically -->
+      </div>
+
+      <form id="shout-form" class="p-3 border-t border-slate-200 bg-white flex items-center gap-2 shrink-0">
+        <input id="inp-shout-msg" type="text" maxlength="80" placeholder="사자후로 동네 전체에 외치기..." class="flex-1 min-w-0 px-3 py-2 text-xs bg-slate-100 focus:bg-white border border-transparent focus:border-indigo-400 rounded-xl outline-none transition" />
+        <div id="shout-item-pill" class="shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-[11px] font-bold" title="보유 사자후 아이템">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span id="shout-item-count">0</span>
+        </div>
+        <button type="submit" class="shrink-0 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition">보내기</button>
+      </form>
+    </div>
+  </div>
 
   <!-- Profile / Nickname / EXP Modal -->
   <div id="profile-modal" class="hidden fixed inset-0 z-[1060] bg-slate-900/55 backdrop-blur-[2px] flex items-center justify-center p-4">
@@ -479,7 +512,8 @@
       userLocation: null,
       sortBy: 'distance',
       sortDir: 'asc',
-      user: null
+      user: null,
+      shouts: []
     };
 
     let kakaoMap = null;
@@ -487,6 +521,7 @@
     let pickerMarker = null;
     const overlaysById = new Map();
     let toastTimer = null;
+    let shoutTickerTimer = null;
     let isProgrammaticPan = false;
 
     function showToast(msg) {
@@ -714,6 +749,7 @@
       const userBtn = document.getElementById('header-user-btn');
       const userNameEl = document.getElementById('header-user-name');
       const userLevelEl = document.getElementById('header-user-level');
+      const shoutCountEl = document.getElementById('shout-item-count');
       if (state.user) {
         const info = getLevelInfo(state.user.exp || 0);
         loginBtn.classList.add('hidden');
@@ -721,11 +757,18 @@
         userBtn.classList.add('inline-flex');
         userNameEl.textContent = state.user.nickname;
         userLevelEl.textContent = `Lv.${info.level}`;
+        if (shoutCountEl) shoutCountEl.textContent = String(state.user.megaphone_count || 0);
       } else {
         loginBtn.classList.remove('hidden');
         userBtn.classList.add('hidden');
         userBtn.classList.remove('inline-flex');
+        if (shoutCountEl) shoutCountEl.textContent = '0';
       }
+    }
+
+    function getTodayKstDateStr() {
+      const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      return kst.toISOString().slice(0, 10);
     }
 
     function openProfileModal() {
@@ -734,8 +777,8 @@
         body.innerHTML = `
           <div class="text-center space-y-3 py-2">
             <div class="text-3xl">🕹️</div>
-            <p class="text-sm font-semibold text-slate-800">로그인하면 내 레벨과 닉네임을 관리할 수 있어요</p>
-            <p class="text-xs text-slate-500">후기 작성, 사진 첨부, 매장 제보로 경험치를 모아 Lv.10 전설의 크레인왕에 도전해 보세요.</p>
+            <p class="text-sm font-semibold text-slate-800">로그인하면 포인트·출석체크·사자후를 이용할 수 있어요</p>
+            <p class="text-xs text-slate-500">제보 +500P · 후기 +25P · 출석체크 +100P로 동네 사자후를 외쳐보세요.</p>
             <button type="button" data-action="modal-kakao-login" class="w-full py-2.5 px-4 rounded-xl bg-[#FEE500] hover:bg-[#FDD800] text-[#191919] text-sm font-bold transition">
               💬 카카오 로그인하기
             </button>
@@ -743,6 +786,9 @@
         `;
       } else {
         const exp = state.user.exp || 0;
+        const pts = state.user.points || 0;
+        const megas = state.user.megaphone_count || 0;
+        const checkedInToday = state.user.last_checkin_date === getTodayKstDateStr();
         const info = getLevelInfo(exp);
         const pct = info.next
           ? Math.min(100, Math.round(((exp - info.minExp) / (info.next.minExp - info.minExp)) * 100))
@@ -750,7 +796,7 @@
         const remainText = info.next ? `다음 레벨까지 ${info.next.minExp - exp} EXP 남음` : '최고 레벨 달성!';
 
         body.innerHTML = `
-          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs font-bold px-2 py-0.5 rounded-lg ${info.badgeClass}">Lv.${info.level} ${info.title}</span>
               <span class="text-xs font-bold text-indigo-600">${exp.toLocaleString()} EXP</span>
@@ -761,7 +807,18 @@
             <div class="text-[11px] text-slate-500 text-right">${remainText}</div>
           </div>
 
-          <form id="nickname-form" class="space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3 flex flex-col justify-between">
+              <span class="text-[11px] font-semibold text-indigo-700">보유 포인트</span>
+              <span class="text-lg font-extrabold text-slate-900 mt-0.5">${pts.toLocaleString()} P</span>
+            </div>
+            <button type="button" data-action="daily-checkin" ${checkedInToday ? 'disabled' : ''} class="rounded-2xl p-3 flex flex-col items-center justify-center text-center transition border ${checkedInToday ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white shadow-sm active:scale-[0.98]'}">
+              <span class="text-xs font-bold">${checkedInToday ? '오늘 출석 완료' : '📅 출석체크'}</span>
+              <span class="text-[11px] font-semibold mt-0.5">${checkedInToday ? '내일 다시 받기' : '+100 P 받기'}</span>
+            </button>
+          </div>
+
+          <form id="nickname-form" class="space-y-1.5">
             <div class="flex items-center justify-between">
               <label for="inp-nickname" class="block text-xs font-semibold text-slate-700">닉네임 변경</label>
               <span class="text-[11px] text-slate-400">최대 10글자</span>
@@ -772,7 +829,30 @@
             </div>
           </form>
 
-          <div class="pt-2 border-t border-slate-100 flex justify-end">
+          <!-- Apple-style Megaphone (사자후) Purchase Card -->
+          <div class="rounded-2xl bg-gradient-to-br from-[#1D1D1F] to-[#2C2C2E] text-white p-3.5 shadow-md flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="text-amber-300">
+                  <path d="m3 11 18-5v12L3 14v-3z"/>
+                  <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
+                  <path d="M22 9v6"/>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-bold tracking-tight flex items-center gap-1.5">
+                  <span>사자후 확성기</span>
+                  <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/15 text-amber-200">보유 ${megas}개</span>
+                </div>
+                <p class="text-[10px] text-slate-300 truncate mt-0.5">전체 접속자에게 내 글 2초간 노출</p>
+              </div>
+            </div>
+            <button type="button" data-action="buy-megaphone" class="shrink-0 px-3 py-2 rounded-xl bg-white text-[#1D1D1F] hover:bg-slate-100 active:scale-95 text-xs font-bold transition shadow-sm">
+              100P 구매
+            </button>
+          </div>
+
+          <div class="pt-1 flex justify-end">
             <button type="button" data-action="modal-logout" class="text-xs font-semibold text-rose-600 hover:underline">로그아웃</button>
           </div>
         `;
@@ -818,11 +898,14 @@
         return;
       }
       const uid = session.user.id;
-      const { data: profile } = await sb.from('profiles').select('nickname, exp').eq('id', uid).maybeSingle();
+      const { data: profile } = await sb.from('profiles').select('nickname, exp, points, megaphone_count, last_checkin_date').eq('id', uid).maybeSingle();
       state.user = {
         id: uid,
         nickname: ((profile && profile.nickname) || session.user.user_metadata?.name || '뽑기유저').slice(0, 10),
-        exp: (profile && profile.exp) || 0
+        exp: (profile && profile.exp) || 0,
+        points: (profile && profile.points) || 0,
+        megaphone_count: (profile && profile.megaphone_count) || 0,
+        last_checkin_date: (profile && profile.last_checkin_date) || null
       };
       const [favRes, likeRes, repRes] = await Promise.all([
         sb.from('favorites').select('shop_id, memo').eq('user_id', uid),
@@ -835,6 +918,90 @@
       state.myReports = new Set((repRes.data || []).map(r => r.shop_id));
       updateAuthUI();
       computeFavoriteAlarms();
+    }
+
+    function flashShoutTicker(shout) {
+      if (!shout) return;
+      const ticker = document.getElementById('shout-ticker');
+      const badge = document.getElementById('shout-ticker-badge');
+      const textEl = document.getElementById('shout-ticker-text');
+      if (!ticker || !badge || !textEl) return;
+
+      badge.classList.remove('hidden');
+      textEl.textContent = `[Lv.${shout.level || 1} ${shout.nickname}] ${shout.message}`;
+      ticker.classList.remove('bg-slate-100/90', 'text-slate-500');
+      ticker.classList.add('bg-indigo-50', 'text-indigo-900', 'font-semibold', 'ring-1', 'ring-indigo-200');
+
+      if (shoutTickerTimer) clearTimeout(shoutTickerTimer);
+      shoutTickerTimer = setTimeout(() => {
+        badge.classList.add('hidden');
+        textEl.textContent = '전체 버튼을 눌러 동네 사자후를 확인해 보세요';
+        ticker.classList.add('bg-slate-100/90', 'text-slate-500');
+        ticker.classList.remove('bg-indigo-50', 'text-indigo-900', 'font-semibold', 'ring-1', 'ring-indigo-200');
+      }, 2000);
+    }
+
+    function renderShoutModalList() {
+      const body = document.getElementById('shout-list-body');
+      if (!body) return;
+      if (state.shouts.length === 0) {
+        body.innerHTML = '<p class="text-xs text-slate-400 text-center py-8">아직 등록된 사자후가 없습니다. 첫 사자후를 외쳐보세요!</p>';
+        return;
+      }
+      body.innerHTML = state.shouts.map(s => {
+        const dt = formatDateTime(s.created_at).slice(11) || '';
+        return `
+          <div class="bg-white border border-slate-200/80 rounded-xl px-3 py-2 shadow-sm">
+            <div class="flex items-center justify-between gap-2 text-[10px] text-slate-500 mb-0.5">
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">Lv.${s.level || 1}</span>
+                <span class="font-bold text-slate-800">${escapeHtml(s.nickname)}</span>
+              </div>
+              <span>${escapeHtml(dt)}</span>
+            </div>
+            <p class="text-xs text-slate-800 leading-snug">${escapeHtml(s.message)}</p>
+          </div>
+        `;
+      }).join('');
+      body.scrollTop = body.scrollHeight;
+    }
+
+    async function loadShouts() {
+      const { data, error } = await sb
+        .from('shouts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) return;
+      state.shouts = (data || []).reverse();
+      renderShoutModalList();
+    }
+
+    function subscribeRealtimeShouts() {
+      sb.channel('public:shouts')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shouts' }, (payload) => {
+          const shout = payload.new;
+          if (!shout) return;
+          if (!state.shouts.some(s => s.id === shout.id)) {
+            state.shouts.push(shout);
+            if (state.shouts.length > 50) state.shouts.shift();
+          }
+          flashShoutTicker(shout);
+          if (!document.getElementById('shout-modal').classList.contains('hidden')) {
+            renderShoutModalList();
+          }
+        })
+        .subscribe();
+    }
+
+    async function openShoutModal() {
+      document.getElementById('shout-modal').classList.remove('hidden');
+      await loadShouts();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeShoutModal() {
+      document.getElementById('shout-modal').classList.add('hidden');
     }
 
     async function loadShopsFromSupabase() {
@@ -1631,7 +1798,7 @@
           return showToast('후기 등록 실패: ' + (error.message || error.code || '오류'));
         }
         await loadUserSession();
-        showToast('한줄 후기가 등록되었습니다!');
+        showToast('한줄 후기 등록 완료! (+25 P / +15 EXP)');
         await loadShopsFromSupabase();
       });
     }
@@ -1781,7 +1948,6 @@
 
     async function initApp() {
       initKakaoMap();
-      initFilterDragScroll();
 
       document.getElementById('panel-content').addEventListener('click', handleDelegatedClick);
       document.getElementById('panel-content').addEventListener('submit', handleDelegatedSubmit);
@@ -1799,16 +1965,33 @@
       searchInput.addEventListener('input', () => { state.searchQuery = searchInput.value; clearSearchBtn.classList.toggle('hidden', !state.searchQuery); renderAll(); });
       clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; state.searchQuery = ''; clearSearchBtn.classList.add('hidden'); renderAll(); });
 
-      document.getElementById('filter-chips').addEventListener('click', (e) => {
-        const chip = e.target.closest('.filter-chip');
-        if (!chip) return;
-        state.activeFilter = chip.getAttribute('data-filter');
-        document.querySelectorAll('.filter-chip').forEach(c => {
-          c.className = c === chip
-            ? 'filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-indigo-600 text-white shadow-sm'
-            : 'filter-chip px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-slate-100 text-slate-700 hover:bg-slate-200';
+      document.getElementById('open-shout-btn').addEventListener('click', openShoutModal);
+      document.getElementById('shout-ticker').addEventListener('click', openShoutModal);
+      document.getElementById('close-shout-modal').addEventListener('click', closeShoutModal);
+      document.getElementById('shout-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'shout-modal') closeShoutModal();
+      });
+      document.getElementById('shout-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('inp-shout-msg');
+        const msg = input.value.trim();
+        if (!msg) return showToast('사자후 내용을 입력해 주세요.');
+        requireKakaoAuth('사자후 작성은 카카오 로그인이 필요합니다.', async () => {
+          if ((state.user.megaphone_count || 0) < 1) {
+            showToast('보유한 사자후가 없습니다. 내 프로필에서 100P로 구매해 주세요!');
+            return;
+          }
+          const { data, error } = await sb.rpc('send_shout', { p_message: msg });
+          if (error) return showToast('사자후 발송 실패: ' + (error.message || '오류'));
+          if (!data || !data.success) return showToast((data && data.message) || '사자후 발송에 실패했습니다.');
+          input.value = '';
+          state.user.megaphone_count = data.megaphone_count;
+          updateAuthUI();
+          await loadShouts();
+          const latest = state.shouts[state.shouts.length - 1];
+          if (latest) flashShoutTicker(latest);
+          showToast('사자후가 동네 전체에 전송되었습니다!');
         });
-        renderAll();
       });
 
       document.getElementById('desk-tab-list').addEventListener('click', () => { state.deskTab = 'list'; state.selectedShopId = null; renderPanels(); });
@@ -1870,6 +2053,23 @@
         if (act === 'modal-kakao-login') {
           closeProfileModal();
           openLoginModal('');
+        } else if (act === 'daily-checkin') {
+          const { data, error } = await sb.rpc('claim_daily_checkin');
+          if (error) return showToast('출석체크 오류: ' + (error.message || '오류'));
+          if (!data || !data.success) return showToast((data && data.message) || '이미 출석체크를 완료했습니다.');
+          state.user.points = data.points;
+          state.user.last_checkin_date = data.last_checkin_date;
+          openProfileModal();
+          showToast('출석체크 완료! +100 P 지급되었습니다.');
+        } else if (act === 'buy-megaphone') {
+          const { data, error } = await sb.rpc('buy_megaphone');
+          if (error) return showToast('구매 오류: ' + (error.message || '오류'));
+          if (!data || !data.success) return showToast((data && data.message) || '포인트가 부족합니다.');
+          state.user.points = data.points;
+          state.user.megaphone_count = data.megaphone_count;
+          updateAuthUI();
+          openProfileModal();
+          showToast('사자후 확성기 1개를 구매했습니다!');
         } else if (act === 'modal-logout') {
           await sb.auth.signOut();
           state.user = null;
@@ -1963,7 +2163,7 @@
         await loadUserSession();
         closeReportModal();
         e.target.reset();
-        showToast(`'${name}' 매장이 등록되었습니다! (+50 EXP)`);
+        showToast(`'${name}' 매장이 등록되었습니다! (+500 P / +50 EXP)`);
         await loadShopsFromSupabase();
         if (data && data.id) selectShop(data.id, true);
       });
@@ -2016,6 +2216,8 @@
 
       await loadUserSession();
       await loadShopsFromSupabase();
+      await loadShouts();
+      subscribeRealtimeShouts();
     }
 
     window.addEventListener('DOMContentLoaded', initApp);
