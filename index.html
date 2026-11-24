@@ -228,6 +228,19 @@
         </div>
       </div>
 
+      <!-- Top-Right Bug Report Button -->
+      <div class="absolute top-3 right-3 z-[400] flex items-center gap-2 pointer-events-none">
+        <button
+          id="open-bug-report-btn"
+          type="button"
+          class="pointer-events-auto bg-white/95 backdrop-blur-sm hover:bg-slate-50 active:scale-95 border border-slate-200 shadow-sm rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition"
+          title="서비스 버그 및 오류 신고"
+        >
+          <i data-lucide="bug" class="w-3.5 h-3.5 text-rose-500"></i>
+          <span>버그 신고</span>
+        </button>
+      </div>
+
       <!-- Pick Location Banner (Draggable Claw Marker) -->
       <div id="pick-mode-banner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-[500] bg-indigo-600/95 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2">
         <svg width="15" height="15" viewBox="0 0 36 36" fill="none" class="shrink-0"><rect x="16.5" y="2" width="3" height="6" rx="1.5" fill="#FFFFFF"/><circle cx="18" cy="11" r="4" fill="#FFFFFF"/><path d="M15 13 L8 21 L12 28" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13 L28 21 L24 28" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="24" r="5.5" fill="#FDE047"/></svg>
@@ -475,6 +488,31 @@
     </div>
   </div>
 
+  <!-- Bug Report Modal -->
+  <div id="bug-report-modal" class="hidden fixed inset-0 z-[1130] bg-slate-900/55 backdrop-blur-[2px] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-1.5">
+          <i data-lucide="bug" class="w-4 h-4 text-rose-500"></i>
+          <h2 class="text-sm font-bold text-slate-900">버그 및 오류 신고</h2>
+        </div>
+        <button id="close-bug-report-modal" type="button" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg" aria-label="닫기">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="bug-report-form" class="p-5 space-y-3">
+        <div>
+          <label for="inp-bug-memo" class="block text-xs font-semibold text-slate-700 mb-1">불편 사항 또는 버그 내용 *</label>
+          <textarea id="inp-bug-memo" rows="4" required maxlength="500" placeholder="예: 특정 화면에서 버튼이 눌리지 않거나 지도가 멈추는 현상을 적어주세요." class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-indigo-500 outline-none resize-none"></textarea>
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button id="cancel-bug-report-btn" type="button" class="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
+          <button type="submit" class="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition">신고 보내기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Shop Report Reason Modal -->
   <div id="shop-report-modal" class="hidden fixed inset-0 z-[1120] bg-slate-900/55 backdrop-blur-[2px] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
@@ -560,6 +598,7 @@
       adminReports: [],
       adminReviewReports: [],
       adminShoutReports: [],
+      adminBugReports: [],
       activeGameView: 'menu',
       rpsState: null,
       rpsAnimating: false,
@@ -577,6 +616,17 @@
         lastResult: null
       }
     };
+
+    const ROULETTE_SECTORS = [
+      { label: '3,000P', weight: 3.5, color: '#F59E0B', textColor: '#111827', isJackpot: true },
+      { label: '꽝', weight: 22.5, color: '#1E293B', textColor: '#F8FAFC', isJackpot: false },
+      { label: '200P', weight: 16.0, color: '#3B82F6', textColor: '#FFFFFF', isJackpot: false },
+      { label: '400P', weight: 12.0, color: '#10B981', textColor: '#FFFFFF', isJackpot: false },
+      { label: '꽝', weight: 22.0, color: '#334155', textColor: '#F8FAFC', isJackpot: false },
+      { label: '300P', weight: 13.0, color: '#6366F1', textColor: '#FFFFFF', isJackpot: false },
+      { label: '100P', weight: 7.0, color: '#8B5CF6', textColor: '#FFFFFF', isJackpot: false },
+      { label: '500P', weight: 4.0, color: '#EC4899', textColor: '#FFFFFF', isJackpot: false }
+    ];
 
     let kakaoMap = null;
     let kakaoGeocoder = null;
@@ -740,18 +790,19 @@
           const cachedAddr = resolvedAddressCache.get(shop.id) || '';
           const reviewPrizeText = (shop.reviews || []).flatMap(r => Array.isArray(r.prizes) ? r.prizes : []).join(' ');
           const hay = [
+            cachedAddr,
             shop.name,
             shop.area,
             shop.address,
-            cachedAddr,
             reviewPrizeText,
             ...(shop.prizes || []),
             ...(shop.machines || [])
           ].join(' ').toLowerCase();
+          const addrMatches = cachedAddr.toLowerCase().includes(q);
           const nearSearchRegion = activeSearchRegionCenter
             ? getDistanceMeters(activeSearchRegionCenter.lat, activeSearchRegionCenter.lng, shop.lat, shop.lng) <= 2500
             : false;
-          if (!hay.includes(q) && !nearSearchRegion) return false;
+          if (!addrMatches && !hay.includes(q) && !nearSearchRegion) return false;
         }
         return true;
       }).sort((a, b) => {
@@ -854,10 +905,10 @@
       `;
     }
 
-    const RETRO_RPS_SEGMENTS = [4, 1, 2, 7, 4, 2, 20, 1, 2, 4, 7, 2];
+    const RETRO_RPS_SEGMENTS = [400, 100, 200, 700, 400, 200, 1000, 100, 200, 400, 700, 200];
 
     function buildRetroLedHandSvg(choice) {
-      // Red LED dot coordinates on 120x120 black screen
+      // Apple-style minimal dot matrix coordinates on 120x120 screen
       const dots = [];
       const addLine = (x1, y1, x2, y2, steps) => {
         for (let i = 0; i <= steps; i++) {
@@ -867,7 +918,6 @@
       };
 
       if (choice === 'scissors') {
-        // V-fingers + rounded fist base + inner palm lines
         addLine(46, 54, 41, 26, 7);
         addLine(41, 26, 48, 22, 2);
         addLine(48, 22, 55, 27, 2);
@@ -878,7 +928,6 @@
         addLine(73, 22, 79, 27, 2);
         addLine(79, 27, 74, 54, 7);
 
-        // Thumb & folded fingers + base
         addLine(46, 54, 36, 58, 3);
         addLine(36, 58, 34, 67, 2);
         addLine(34, 67, 42, 72, 2);
@@ -890,11 +939,9 @@
         addLine(84, 74, 86, 62, 3);
         addLine(86, 62, 74, 54, 3);
 
-        // Two inner V lines
         addLine(54, 60, 57, 74, 4);
         addLine(66, 60, 63, 74, 4);
       } else if (choice === 'rock') {
-        // Clenched retro fist
         addLine(40, 46, 46, 38, 2);
         addLine(46, 38, 74, 38, 7);
         addLine(74, 38, 82, 46, 2);
@@ -903,14 +950,12 @@
         addLine(76, 88, 46, 88, 8);
         addLine(46, 88, 38, 74, 4);
         addLine(38, 74, 40, 46, 7);
-        // Knuckle dividers + thumb wrap
         addLine(50, 39, 50, 54, 4);
         addLine(60, 39, 60, 54, 4);
         addLine(70, 39, 70, 54, 4);
         addLine(41, 56, 79, 56, 9);
         addLine(46, 67, 68, 67, 6);
       } else if (choice === 'paper') {
-        // Five open fingers + palm
         addLine(35, 65, 28, 48, 5);
         addLine(28, 48, 34, 45, 2);
         addLine(34, 45, 42, 57, 3);
@@ -935,7 +980,6 @@
         addLine(76, 88, 46, 88, 8);
         addLine(46, 88, 35, 65, 6);
       } else {
-        // Idle question mark in red LED dots
         addLine(48, 40, 55, 32, 3);
         addLine(55, 32, 67, 32, 3);
         addLine(67, 32, 73, 40, 3);
@@ -945,19 +989,13 @@
         dots.push([60, 80]);
       }
 
-      // Faint background ghost hand dots for authentic arcade LED board look
-      const ghostCircles = [
-        [34, 58], [38, 52], [44, 48], [52, 46], [60, 46], [68, 45], [76, 43], [83, 48], [86, 56], [82, 64]
-      ].map(([gx, gy]) => `<circle cx="${gx}" cy="${gy}" r="2.2" fill="#3B0A0A" />`).join('');
-
       const activeCircles = dots.map(([dx, dy]) =>
-        `<circle cx="${dx.toFixed(1)}" cy="${dy.toFixed(1)}" r="2.35" fill="#FF1E1E" />`
+        `<circle cx="${dx.toFixed(1)}" cy="${dy.toFixed(1)}" r="2.2" fill="#FF3B30" />`
       ).join('');
 
       return `
         <svg viewBox="0 0 120 120" class="w-full h-full">
-          ${ghostCircles}
-          <g class="retro-led-glow">
+          <g>
             ${activeCircles}
           </g>
         </svg>
@@ -968,7 +1006,7 @@
       const cx = 150;
       const cy = 150;
       const rOuter = 128;
-      const rInner = 94;
+      const rInner = 92;
       const segAngle = 360 / RETRO_RPS_SEGMENTS.length;
       const paths = [];
       const labels = [];
@@ -990,13 +1028,13 @@
         const iy1 = cy + rInner * Math.sin(sRad);
 
         const isLit = highlightIdx === idx;
-        const isTeal = idx % 2 === 0;
-        const fill = isLit ? '#FACC15' : (isTeal ? '#46B5B0' : '#FFFFFF');
-        const textFill = isLit ? '#EF4444' : (isTeal ? '#FFFFFF' : '#46B5B0');
+        const isDarkSeg = idx % 2 === 0;
+        const fill = isLit ? '#111827' : (isDarkSeg ? '#F1F5F9' : '#FFFFFF');
+        const textFill = isLit ? '#FFFFFF' : (num >= 700 ? '#4F46E5' : '#334155');
 
         paths.push(`
           <path d="M ${ox1.toFixed(2)} ${oy1.toFixed(2)} A ${rOuter} ${rOuter} 0 0 1 ${ox2.toFixed(2)} ${oy2.toFixed(2)} L ${ix2.toFixed(2)} ${iy2.toFixed(2)} A ${rInner} ${rInner} 0 0 0 ${ix1.toFixed(2)} ${iy1.toFixed(2)} Z"
-                fill="${fill}" stroke="#111827" stroke-width="2.2" />
+                fill="${fill}" stroke="#E2E8F0" stroke-width="1.2" />
         `);
 
         const midDeg = startDeg + segAngle / 2;
@@ -1008,8 +1046,8 @@
 
         labels.push(`
           <text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}"
-                fill="${textFill}" stroke="#111827" stroke-width="2.8" paint-order="stroke"
-                font-size="16" font-weight="900" text-anchor="middle" dominant-baseline="middle"
+                fill="${textFill}"
+                font-size="${num >= 1000 ? '11' : '12'}" font-weight="700" text-anchor="middle" dominant-baseline="middle"
                 transform="rotate(${rot.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)})">${num}</text>
         `);
       });
@@ -1019,63 +1057,42 @@
       const isDraw = outcome === 'draw';
       const isLose = outcome === 'lose';
 
-      const fireworkBurstSvg = `
-        <svg viewBox="0 0 64 64" class="absolute inset-0 w-full h-full pointer-events-none">
-          <g stroke-width="1.3" stroke-linecap="round">
-            <line x1="32" y1="32" x2="10" y2="12" stroke="#38BDF8" />
-            <line x1="32" y1="32" x2="22" y2="6" stroke="#FDE047" />
-            <line x1="32" y1="32" x2="34" y2="5" stroke="#FFFFFF" />
-            <line x1="32" y1="32" x2="46" y2="8" stroke="#38BDF8" />
-            <line x1="32" y1="32" x2="56" y2="18" stroke="#FDE047" />
-            <line x1="32" y1="32" x2="58" y2="34" stroke="#FFFFFF" />
-            <line x1="32" y1="32" x2="52" y2="50" stroke="#38BDF8" />
-            <line x1="32" y1="32" x2="38" y2="58" stroke="#FDE047" />
-            <line x1="32" y1="32" x2="20" y2="56" stroke="#FFFFFF" />
-            <line x1="32" y1="32" x2="8" y2="44" stroke="#38BDF8" />
-            <line x1="32" y1="32" x2="6" y2="28" stroke="#FDE047" />
-          </g>
-        </svg>
-      `;
-
       const displayChoice = isAnimating
         ? (['scissors', 'rock', 'paper'][Math.floor(Date.now() / 90) % 3])
         : (rps ? rps.bot_choice : 'idle');
 
       return `
-        <div class="relative w-[292px] h-[292px] mx-auto select-none">
+        <div class="relative w-[286px] h-[286px] mx-auto select-none">
           <!-- Top-Left '이겼다' -->
-          <div class="absolute top-1 left-1 z-20 w-[68px] h-[68px] rounded-full border-2 border-slate-900 flex items-center justify-center overflow-hidden shadow-md transition-transform ${isWin ? 'scale-110 ring-4 ring-lime-300 bg-[#6BA539]' : 'bg-[#6BA539]/90 opacity-90'}">
-            ${fireworkBurstSvg}
-            <span class="relative z-10 text-[15px] tracking-tighter retro-outline-text">이겼다</span>
+          <div class="absolute top-1.5 left-1.5 z-20 w-[62px] h-[62px] rounded-full border flex items-center justify-center shadow-sm transition-all ${isWin ? 'scale-105 bg-emerald-500 border-emerald-600 text-white ring-4 ring-emerald-200' : 'bg-white/95 border-slate-200 text-slate-400'}">
+            <span class="text-xs font-bold tracking-tight">이겼다</span>
           </div>
 
           <!-- Top-Right '이겼다' -->
-          <div class="absolute top-1 right-1 z-20 w-[68px] h-[68px] rounded-full border-2 border-slate-900 flex items-center justify-center overflow-hidden shadow-md transition-transform ${isWin ? 'scale-110 ring-4 ring-lime-300 bg-[#6BA539]' : 'bg-[#6BA539]/90 opacity-90'}">
-            ${fireworkBurstSvg}
-            <span class="relative z-10 text-[15px] tracking-tighter retro-outline-text">이겼다</span>
+          <div class="absolute top-1.5 right-1.5 z-20 w-[62px] h-[62px] rounded-full border flex items-center justify-center shadow-sm transition-all ${isWin ? 'scale-105 bg-emerald-500 border-emerald-600 text-white ring-4 ring-emerald-200' : 'bg-white/95 border-slate-200 text-slate-400'}">
+            <span class="text-xs font-bold tracking-tight">이겼다</span>
           </div>
 
-          <!-- Bottom-Left '져부러쓰~' -->
-          <div class="absolute bottom-1 left-1 z-20 w-[68px] h-[68px] rounded-full border-2 border-slate-900 flex items-center justify-center shadow-md transition-transform ${isLose ? 'scale-110 ring-4 ring-rose-400 bg-rose-100' : 'bg-white'}">
-            <span class="text-[12px] tracking-tighter retro-outline-text">져부러쓰~</span>
+          <!-- Bottom-Left '졌다' -->
+          <div class="absolute bottom-1.5 left-1.5 z-20 w-[62px] h-[62px] rounded-full border flex items-center justify-center shadow-sm transition-all ${isLose ? 'scale-105 bg-rose-500 border-rose-600 text-white ring-4 ring-rose-200' : 'bg-white/95 border-slate-200 text-slate-400'}">
+            <span class="text-xs font-bold tracking-tight">졌다</span>
           </div>
 
-          <!-- Bottom-Right '비겨쓰~' -->
-          <div class="absolute bottom-1 right-1 z-20 w-[68px] h-[68px] rounded-full border-2 border-slate-900 flex items-center justify-center shadow-md transition-transform ${isDraw ? 'scale-110 ring-4 ring-sky-300 bg-[#4A7C9B]' : 'bg-[#4A7C9B]/90'}">
-            <span class="text-[13px] tracking-tighter retro-outline-text">비겨쓰~</span>
+          <!-- Bottom-Right '비겼다' -->
+          <div class="absolute bottom-1.5 right-1.5 z-20 w-[62px] h-[62px] rounded-full border flex items-center justify-center shadow-sm transition-all ${isDraw ? 'scale-105 bg-sky-500 border-sky-600 text-white ring-4 ring-sky-200' : 'bg-white/95 border-slate-200 text-slate-400'}">
+            <span class="text-xs font-bold tracking-tight">비겼다</span>
           </div>
 
-          <!-- Main Arcade Wheel SVG -->
-          <svg viewBox="0 0 300 300" class="w-full h-full drop-shadow-md">
-            <circle cx="150" cy="150" r="142" fill="#0F766E" stroke="#111827" stroke-width="2.5" />
-            <circle cx="150" cy="150" r="131" fill="#FFFFFF" stroke="#111827" stroke-width="2" />
+          <!-- Minimal Apple-Style Wheel SVG -->
+          <svg viewBox="0 0 300 300" class="w-full h-full drop-shadow-sm">
+            <circle cx="150" cy="150" r="134" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5" />
             ${paths.join('')}
             ${labels.join('')}
-            <circle cx="150" cy="150" r="90" fill="#090D16" stroke="#111827" stroke-width="3" />
+            <circle cx="150" cy="150" r="88" fill="#18181B" stroke="#27272A" stroke-width="2" />
           </svg>
 
-          <!-- Center Black LED Matrix Screen -->
-          <div id="retro-led-screen" class="absolute inset-0 m-auto w-[166px] h-[166px] rounded-full flex items-center justify-center pointer-events-none">
+          <!-- Center Minimal Dot Matrix Screen -->
+          <div id="retro-led-screen" class="absolute inset-0 m-auto w-[160px] h-[160px] rounded-full flex items-center justify-center pointer-events-none">
             ${buildRetroLedHandSvg(displayChoice)}
           </div>
         </div>
@@ -1093,8 +1110,7 @@
       const choices = ['scissors', 'rock', 'paper'];
       let tickCount = 0;
 
-      // Pick segment matching reward multiplier feel
-      const rewardToIdx = { 100: [1, 7], 150: [1, 7], 200: [2, 8, 11], 250: [2, 8, 11], 300: [0, 4, 9], 350: [0, 4, 9], 400: [3, 10], 450: [6] };
+      const rewardToIdx = { 100: [1, 7], 200: [2, 8, 11], 400: [0, 4, 9], 700: [3, 10], 1000: [6] };
       const candidates = rewardToIdx[data.reward] || [0];
       const targetSegIdx = data.outcome === 'win'
         ? candidates[Math.floor(Math.random() * candidates.length)]
@@ -1129,9 +1145,9 @@
             state.rpsHighlightIndex = -1;
             openRpsModal('rps');
             if (data.outcome === 'draw') {
-              showToast('🤝 비겨쓰~! 포인트 변동이 없습니다.');
+              showToast('🤝 비겼다! 포인트 변동이 없습니다.');
             } else {
-              showToast('😢 져부러쓰~! (-300P)');
+              showToast('😢 졌다! (-300P)');
             }
           }
         }
@@ -1520,8 +1536,8 @@
           ${btnHtml}
         `;
       } else {
-        titleEl.textContent = '포인트 짱깸뽀!';
-        iconEl.textContent = '🕹️';
+        titleEl.textContent = '포인트 가위바위보';
+        iconEl.textContent = '✌️';
         backBtn.classList.remove('hidden');
         const pts = state.user.points || 0;
         const rps = state.rpsState;
@@ -1529,55 +1545,48 @@
         const rpsLabelMap = { scissors: '가위', rock: '바위', paper: '보' };
 
         const statusBanner = isAnim
-          ? '<span class="text-xs font-extrabold text-teal-700 animate-pulse">짱! 깸! 뽀! 결과 확인 중...</span>'
+          ? '<span class="text-xs font-semibold text-slate-600 animate-pulse">결과 확인 중...</span>'
           : !rps
-            ? '<span class="text-[11px] font-bold text-slate-500">아래 가위·바위·보 버튼을 눌러 대결하세요!</span>'
+            ? '<span class="text-[11px] font-medium text-slate-500">아래 가위·바위·보 중 하나를 선택하세요</span>'
             : rps.outcome === 'win'
-              ? `<span class="rps-pop-anim inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-lime-400 border border-slate-900 text-slate-950 text-xs font-extrabold shadow-sm">🎉 이겼다! +${rps.reward.toLocaleString()} P</span>`
+              ? `<span class="rps-pop-anim inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">🎉 이겼다! +${rps.reward.toLocaleString()} P</span>`
               : rps.outcome === 'draw'
-                ? '<span class="rps-pop-anim inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-sky-100 border border-sky-300 text-sky-900 text-xs font-extrabold">🤝 비겨쓰~! (0P)</span>'
-                : '<span class="rps-pop-anim inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-rose-100 border border-rose-300 text-rose-700 text-xs font-extrabold">😢 져부러쓰~! (-300P)</span>';
+                ? '<span class="rps-pop-anim inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-xs font-bold">🤝 비겼다 (0P)</span>'
+                : '<span class="rps-pop-anim inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">😢 졌다 (-300P)</span>';
 
         body.innerHTML = `
-          <!-- Retro Arcade Header Banner -->
-          <div class="flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2">
-            <div class="flex items-center gap-1 min-w-0">
-              <span class="w-5 h-5 rounded-full bg-blue-500 border border-slate-900 flex items-center justify-center text-[10px] shrink-0">✌️</span>
-              <span class="w-5 h-5 rounded-full bg-lime-500 border border-slate-900 flex items-center justify-center text-[10px] shrink-0">✊</span>
-              <span class="w-5 h-5 rounded-full bg-rose-500 border border-slate-900 flex items-center justify-center text-[10px] shrink-0">✋</span>
-              <span class="text-[11px] font-black tracking-tight text-slate-900 truncate ml-0.5">
-                추억의 게임! 포인트 <span class="text-blue-600">짱</span><span class="text-lime-600">깸</span><span class="text-rose-600">뽀</span>!
-              </span>
-            </div>
-            <span class="shrink-0 text-xs font-extrabold px-2 py-0.5 rounded-lg bg-slate-900 text-amber-300">${pts.toLocaleString()} P</span>
+          <!-- Clean Apple-Style Points Bar -->
+          <div class="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-2xl px-3.5 py-2.5">
+            <span class="text-xs font-semibold text-slate-600">보유 포인트</span>
+            <span class="text-sm font-bold text-slate-900">${pts.toLocaleString()} P</span>
           </div>
 
-          <!-- Retro Wheel & Red LED Center Display -->
+          <!-- Minimal Wheel & Dot Matrix Display -->
           <div class="py-0.5">
             ${buildRetroJjangkkaemppoBoard(rps, state.rpsHighlightIndex, isAnim)}
           </div>
 
-          <div class="text-center min-h-[26px] flex flex-col items-center justify-center gap-0.5">
+          <div class="text-center min-h-[28px] flex flex-col items-center justify-center gap-0.5">
             ${statusBanner}
-            ${rps && !isAnim ? `<span class="text-[10px] font-semibold text-slate-500">나: ${rpsLabelMap[rps.player_choice]} vs 오락기: ${rpsLabelMap[rps.bot_choice]}</span>` : ''}
+            ${rps && !isAnim ? `<span class="text-[10px] font-medium text-slate-400">나: ${rpsLabelMap[rps.player_choice]} vs 상대: ${rpsLabelMap[rps.bot_choice]}</span>` : ''}
           </div>
 
-          <!-- Retro Arcade Push Buttons -->
-          <div class="grid grid-cols-3 gap-2.5">
-            <button type="button" data-action="play-rps" data-choice="scissors" ${isAnim ? 'disabled' : ''} class="py-2.5 rounded-2xl border-2 border-slate-900 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white active:translate-y-0.5 transition flex flex-col items-center gap-0.5 shadow-[0_3px_0_#0f172a]">
+          <!-- Clean Apple-Style Action Buttons -->
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" data-action="play-rps" data-choice="scissors" ${isAnim ? 'disabled' : ''} class="py-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 text-slate-900 active:scale-[0.98] transition flex flex-col items-center gap-0.5 shadow-sm">
               <span class="text-xl">✌️</span>
-              <span class="text-xs font-black tracking-tight">가위</span>
+              <span class="text-xs font-semibold">가위</span>
             </button>
-            <button type="button" data-action="play-rps" data-choice="rock" ${isAnim ? 'disabled' : ''} class="py-2.5 rounded-2xl border-2 border-slate-900 bg-lime-500 hover:bg-lime-600 disabled:opacity-60 text-slate-950 active:translate-y-0.5 transition flex flex-col items-center gap-0.5 shadow-[0_3px_0_#0f172a]">
+            <button type="button" data-action="play-rps" data-choice="rock" ${isAnim ? 'disabled' : ''} class="py-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 text-slate-900 active:scale-[0.98] transition flex flex-col items-center gap-0.5 shadow-sm">
               <span class="text-xl">✊</span>
-              <span class="text-xs font-black tracking-tight">바위</span>
+              <span class="text-xs font-semibold">바위</span>
             </button>
-            <button type="button" data-action="play-rps" data-choice="paper" ${isAnim ? 'disabled' : ''} class="py-2.5 rounded-2xl border-2 border-slate-900 bg-rose-500 hover:bg-rose-600 disabled:opacity-60 text-white active:translate-y-0.5 transition flex flex-col items-center gap-0.5 shadow-[0_3px_0_#0f172a]">
+            <button type="button" data-action="play-rps" data-choice="paper" ${isAnim ? 'disabled' : ''} class="py-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 text-slate-900 active:scale-[0.98] transition flex flex-col items-center gap-0.5 shadow-sm">
               <span class="text-xl">✋</span>
-              <span class="text-xs font-black tracking-tight">보</span>
+              <span class="text-xs font-semibold">보</span>
             </button>
           </div>
-          <p class="text-[10px] text-center text-slate-400">선차감 없음 · 져부러쓰 -300P · 비겨쓰 0P · 이겼다 +100P~450P</p>
+          <p class="text-[10px] text-center text-slate-400">선차감 없음 · 졌다 -300P · 비겼다 0P · 이겼다 +100P~1,000P</p>
         `;
       }
       document.getElementById('rps-modal').classList.remove('hidden');
@@ -1683,11 +1692,27 @@
           ${state.user.is_admin ? `
             <div class="border border-rose-200 bg-rose-50/50 rounded-2xl p-3 space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-rose-700">🛡️ 관리자 신고 (매장 ${state.adminReports.length} · 후기 ${state.adminReviewReports.length} · 사자후 ${state.adminShoutReports.length})</span>
+                <span class="text-xs font-bold text-rose-700">🛡️ 관리자 신고 (매장 ${state.adminReports.length} · 후기 ${state.adminReviewReports.length} · 사자후 ${state.adminShoutReports.length} · 버그 ${state.adminBugReports.length})</span>
                 <button type="button" data-action="refresh-admin-reports" class="text-[11px] font-semibold text-rose-600 hover:underline">새로고침</button>
               </div>
               <div class="max-h-56 overflow-y-auto space-y-1.5">
-                ${(state.adminReports.length === 0 && state.adminReviewReports.length === 0 && state.adminShoutReports.length === 0) ? '<p class="text-[11px] text-slate-400 text-center py-2">접수된 신고 내역이 없습니다.</p>' : ''}
+                ${(state.adminReports.length === 0 && state.adminReviewReports.length === 0 && state.adminShoutReports.length === 0 && state.adminBugReports.length === 0) ? '<p class="text-[11px] text-slate-400 text-center py-2">접수된 신고 내역이 없습니다.</p>' : ''}
+                ${state.adminBugReports.map(rep => {
+                  const uNick = (rep.profiles && rep.profiles.nickname) || '비로그인/익명';
+                  return `
+                    <div class="bg-white border border-purple-200 rounded-xl p-2 text-[11px] space-y-1">
+                      <div class="flex items-center justify-between gap-1">
+                        <span class="font-bold text-purple-800 truncate">🐛 [버그 제보]</span>
+                        <span class="text-[10px] text-slate-400 shrink-0">${formatDateTime(rep.created_at)}</span>
+                      </div>
+                      <p class="text-slate-700 leading-snug break-words">${escapeHtml(rep.memo || '')}</p>
+                      <div class="flex items-center justify-between gap-1 pt-0.5">
+                        <span class="text-[10px] text-slate-500">제보자: ${escapeHtml(uNick)}</span>
+                        <button type="button" data-action="admin-delete-bug-report" data-report-id="${rep.id}" class="px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 text-[10px] font-semibold">제보 삭제</button>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
                 ${state.adminReports.map(rep => {
                   const sName = (rep.shops && rep.shops.name) || '알 수 없는 매장';
                   const sStatus = rep.shops && rep.shops.status;
@@ -1802,6 +1827,7 @@
         state.adminReports = [];
         state.adminReviewReports = [];
         state.adminShoutReports = [];
+        state.adminBugReports = [];
         updateAuthUI();
         computeFavoriteAlarms();
         return;
@@ -1845,6 +1871,7 @@
         state.adminReports = [];
         state.adminReviewReports = [];
         state.adminShoutReports = [];
+        state.adminBugReports = [];
       }
       updateAuthUI();
       computeFavoriteAlarms();
@@ -1852,7 +1879,7 @@
 
     async function loadAdminReports() {
       if (!state.user || !state.user.is_admin) return;
-      const [shopRepRes, revRepRes, shoutRepRes] = await Promise.all([
+      const [shopRepRes, revRepRes, shoutRepRes, bugRepRes] = await Promise.all([
         sb.from('shop_reports')
           .select('id, shop_id, reason, memo, created_at, shops(name, status), profiles(nickname)')
           .order('created_at', { ascending: false })
@@ -1863,6 +1890,10 @@
           .limit(50),
         sb.from('shout_reports')
           .select('id, shout_id, memo, created_at, shouts(nickname, message), profiles(nickname)')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        sb.from('bug_reports')
+          .select('id, memo, created_at, profiles(nickname)')
           .order('created_at', { ascending: false })
           .limit(50)
       ]);
@@ -1875,6 +1906,22 @@
       if (!shoutRepRes.error && shoutRepRes.data) {
         state.adminShoutReports = shoutRepRes.data;
       }
+      if (!bugRepRes.error && bugRepRes.data) {
+        state.adminBugReports = bugRepRes.data;
+      }
+    }
+
+    async function adminDeleteBugReport(reportId) {
+      if (!state.user || !state.user.is_admin) return;
+      askConfirm('이 버그 제보 내역을 삭제하시겠습니까?', async () => {
+        const { error } = await sb.from('bug_reports').delete().eq('id', reportId);
+        if (error) {
+          return showToast('버그 제보 삭제 실패: ' + (error.message || '권한 오류'));
+        }
+        await loadAdminReports();
+        openProfileModal();
+        showToast('버그 제보 내역이 삭제되었습니다.');
+      });
     }
 
     async function adminDeleteShoutReport(reportId) {
@@ -2121,7 +2168,7 @@
         const starText = starCount === 5 ? '★' : (starCount > 0 ? '★'.repeat(starCount) : '');
         const bellyDiffText = avgDifficulty === '-' ? '' : Number(avgDifficulty).toFixed(1);
         const isFreshMonth = isNewWithinMonth(shop);
-        const fireworkSvg = `<svg width="13.5" height="13.5" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="8" r="2.1" fill="#F59E0B"/><path d="M8 1.5V4.2M8 11.8V14.5M1.5 8H4.2M11.8 8H14.5M3.4 3.4L5.3 5.3M10.7 10.7L12.6 12.6M12.6 3.4L10.7 5.3M5.3 10.7L3.4 12.6" stroke="#EF4444" stroke-width="1.6" stroke-linecap="round"/><circle cx="3.4" cy="3.4" r="1.1" fill="#EC4899"/><circle cx="12.6" cy="3.4" r="1.1" fill="#6366F1"/><circle cx="12.6" cy="12.6" r="1.1" fill="#10B981"/><circle cx="3.4" cy="12.6" r="1.1" fill="#F59E0B"/></svg>`;
+        const fireworkSvg = `<svg width="17.5" height="17.5" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="8" r="2.1" fill="#F59E0B"/><path d="M8 1.5V4.2M8 11.8V14.5M1.5 8H4.2M11.8 8H14.5M3.4 3.4L5.3 5.3M10.7 10.7L12.6 12.6M12.6 3.4L10.7 5.3M5.3 10.7L3.4 12.6" stroke="#EF4444" stroke-width="1.6" stroke-linecap="round"/><circle cx="3.4" cy="3.4" r="1.1" fill="#EC4899"/><circle cx="12.6" cy="3.4" r="1.1" fill="#6366F1"/><circle cx="12.6" cy="12.6" r="1.1" fill="#10B981"/><circle cx="3.4" cy="12.6" r="1.1" fill="#F59E0B"/></svg>`;
 
         const bearSvg = `
           <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -3392,6 +3439,7 @@
         if (window.innerWidth < 768 && state.mobTab === 'map') {
           state.mobTab = 'list';
         }
+        prefetchAllShopAddresses();
         activeSearchRegionCenter = searchRegionCache.get(q.toLowerCase()) || null;
         const immediateMatches = getFilteredShops(false);
         if (immediateMatches.length > 0 && kakaoMap && window.kakao && window.kakao.maps) {
@@ -3639,6 +3687,9 @@
         } else if (act === 'admin-delete-shout-report') {
           const rid = btn.getAttribute('data-report-id');
           if (rid) await adminDeleteShoutReport(rid);
+        } else if (act === 'admin-delete-bug-report') {
+          const rid = btn.getAttribute('data-report-id');
+          if (rid) await adminDeleteBugReport(rid);
         } else if (act === 'admin-force-close-shop') {
           const sid = btn.getAttribute('data-id');
           const sName = btn.getAttribute('data-shop-name') || '';
@@ -3786,6 +3837,29 @@
       document.getElementById('close-photo-modal').addEventListener('click', () => document.getElementById('photo-modal').classList.add('hidden'));
       document.getElementById('photo-modal').addEventListener('click', (e) => {
         if (e.target.id === 'photo-modal') document.getElementById('photo-modal').classList.add('hidden');
+      });
+
+      document.getElementById('open-bug-report-btn').addEventListener('click', () => {
+        document.getElementById('inp-bug-memo').value = '';
+        document.getElementById('bug-report-modal').classList.remove('hidden');
+        if (window.lucide) window.lucide.createIcons();
+      });
+      document.getElementById('close-bug-report-modal').addEventListener('click', () => document.getElementById('bug-report-modal').classList.add('hidden'));
+      document.getElementById('cancel-bug-report-btn').addEventListener('click', () => document.getElementById('bug-report-modal').classList.add('hidden'));
+      document.getElementById('bug-report-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const memo = document.getElementById('inp-bug-memo').value.trim();
+        if (!memo) return showToast('버그 내용을 입력해 주세요.');
+        const { error } = await sb.from('bug_reports').insert({
+          user_id: state.user ? state.user.id : null,
+          memo
+        });
+        document.getElementById('bug-report-modal').classList.add('hidden');
+        if (error) {
+          return showToast('버그 신고 접수 실패: ' + (error.message || '오류'));
+        }
+        if (state.user && state.user.is_admin) await loadAdminReports();
+        showToast('버그 신고가 접수되었습니다. 소중한 제보 감사합니다!');
       });
 
       document.getElementById('close-shop-report-modal').addEventListener('click', () => document.getElementById('shop-report-modal').classList.add('hidden'));
