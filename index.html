@@ -384,64 +384,6 @@
           </div>
         </div>
 
-        <!-- Initial Pin Icon Picker (3 Options) -->
-        <div>
-          <span class="block text-xs font-semibold text-slate-700 mb-1.5">지도 아이콘 모양 <span class="font-normal text-slate-400">(3가지 중 선택)</span></span>
-          <div id="pin-icon-picker" class="grid grid-cols-3 gap-2">
-            <label class="cursor-pointer flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_icon" value="bear" checked class="sr-only" />
-              <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><circle cx="10" cy="10" r="4.2" fill="#1D1D1F"/><circle cx="26" cy="10" r="4.2" fill="#1D1D1F"/><circle cx="18" cy="16.5" r="8.8" fill="#1D1D1F"/><ellipse cx="18" cy="27" rx="7.2" ry="5.8" fill="#1D1D1F"/><circle cx="15" cy="15.2" r="1.15" fill="#FFF"/><circle cx="21" cy="15.2" r="1.15" fill="#FFF"/></svg>
-              <span class="text-xs font-semibold">곰돌이</span>
-            </label>
-            <label class="cursor-pointer flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_icon" value="claw" class="sr-only" />
-              <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><rect x="16.5" y="2" width="3" height="6" rx="1.5" fill="#1D1D1F"/><circle cx="18" cy="11" r="4" fill="#1D1D1F"/><path d="M15 13 L8 21 L12 28" stroke="#1D1D1F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13 L28 21 L24 28" stroke="#1D1D1F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="24" r="5.5" fill="#1D1D1F"/></svg>
-              <span class="text-xs font-semibold">집게</span>
-            </label>
-            <label class="cursor-pointer flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_icon" value="gacha" class="sr-only" />
-              <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="12" fill="#1D1D1F"/><path d="M6 18H30" stroke="#FFF" stroke-width="2.2"/><circle cx="18" cy="18" r="3.4" fill="#FFF"/></svg>
-              <span class="text-xs font-semibold">캡슐</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Initial Pin Color Picker (First Registration Only) -->
-        <div>
-          <span class="block text-xs font-semibold text-slate-700 mb-1.5">지도 아이콘 색상 <span class="font-normal text-slate-400">(최초 등록 시에만 지정 가능)</span></span>
-          <div id="pin-color-picker" class="flex items-center gap-2.5 flex-wrap">
-            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_color" value="#1D1D1F" checked class="sr-only" />
-              <span class="w-4 h-4 rounded-full bg-[#1D1D1F] border border-slate-300"></span>
-              <span class="text-xs font-medium">차콜</span>
-            </label>
-            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_color" value="#4F46E5" class="sr-only" />
-              <span class="w-4 h-4 rounded-full bg-[#4F46E5]"></span>
-              <span class="text-xs font-medium">인디고</span>
-            </label>
-            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_color" value="#0EA5E9" class="sr-only" />
-              <span class="w-4 h-4 rounded-full bg-[#0EA5E9]"></span>
-              <span class="text-xs font-medium">스카이</span>
-            </label>
-            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_color" value="#10B981" class="sr-only" />
-              <span class="w-4 h-4 rounded-full bg-[#10B981]"></span>
-              <span class="text-xs font-medium">민트</span>
-            </label>
-            <label class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_color" value="#F59E0B" class="sr-only" />
-              <span class="w-4 h-4 rounded-full bg-[#F59E0B]"></span>
-              <span class="text-xs font-medium">앰버</span>
-            </label>
-          </div>
-        </div>
-
-        <div>
-        <!-- Initial Pin Icon Picker (2 Options: 인형뽑기=곰돌이, 가챠=캡슐) -->
-        <div>
-          <span class="block text-xs font-semibold text-slate-700 mb-1.5">매장 유형 및 지도 아이콘</span>
         <!-- Pin Icon Picker (2 Options: 인형뽑기=곰돌이, 가챠=캡슐) -->
         <div id="pin-icon-picker" class="grid grid-cols-2 gap-2.5">
           <label class="cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
@@ -620,6 +562,210 @@
       { label: '100P', payout: 100, weight: 50, color: '#8B5CF6', textColor: '#FFFFFF' },
       { label: '500P', payout: 500, weight: 44, color: '#EC4899', textColor: '#FFFFFF' }
     ];
+
+    let kakaoMap = null;
+    let userOverlay = null;
+    let pickerMarker = null;
+    const overlaysById = new Map();
+    let toastTimer = null;
+    let shoutTickerTimer = null;
+    let shoutPollTimer = null;
+    let isProgrammaticPan = false;
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.add('hidden'), 2800);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDateTime(isoStr) {
+      if (!isoStr) return '';
+      const d = new Date(isoStr);
+      if (Number.isNaN(d.getTime())) return String(isoStr).slice(0, 16);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${y}.${m}.${day} ${hh}:${mm}`;
+    }
+
+    function formatDateOnly(isoStr) {
+      if (!isoStr) return '';
+      const d = new Date(isoStr);
+      if (Number.isNaN(d.getTime())) return String(isoStr).slice(0, 10);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}.${m}.${day}`;
+    }
+
+    function isNewWithinMonth(shop) {
+      if (!shop || !shop.created_at) return false;
+      const created = new Date(shop.created_at).getTime();
+      if (Number.isNaN(created)) return false;
+      return (Date.now() - created) <= NEW_SHOP_FLAG_MS;
+    }
+
+    function getLevelInfo(exp) {
+      const val = Math.max(0, Number(exp || 0));
+      let current = LEVEL_TABLE[0];
+      let next = null;
+      for (let i = 0; i < LEVEL_TABLE.length; i++) {
+        if (val >= LEVEL_TABLE[i].minExp) {
+          current = LEVEL_TABLE[i];
+          next = LEVEL_TABLE[i + 1] || null;
+        }
+      }
+      return { ...current, next };
+    }
+
+    function getDistanceMeters(lat1, lng1, lat2, lng2) {
+      const R = 6371000;
+      const toRad = d => (d * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLng = toRad(lng2 - lng1);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function formatDistance(shop) {
+      if (!state.userLocation) return '';
+      const m = getDistanceMeters(state.userLocation.lat, state.userLocation.lng, shop.lat, shop.lng);
+      return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
+    }
+
+    function getPinScale(reviewCount) {
+      const count = Math.max(0, Number(reviewCount || 0));
+      if (count === 0) return 0.8;
+      let scale = 1.0;
+      if (count <= 100) {
+        scale += Math.floor(count / 10) * 0.01;
+      } else if (count <= 1000) {
+        scale += 10 * 0.01 + Math.floor((count - 100) / 100) * 0.01;
+      } else {
+        scale += 10 * 0.01 + 9 * 0.01 + Math.floor((count - 1000) / 1000) * 0.01;
+      }
+      return Math.min(1.3, Number(scale.toFixed(2)));
+    }
+
+    function isSuspectedClosed(shop) {
+      return shop.status === 'suspected_closed' || (shop.report_count || 0) >= CLOSED_REPORT_THRESHOLD;
+    }
+
+    function getDeleteRemainingMs(shop) {
+      if (!state.user || !shop || shop.created_by !== state.user.id || !shop.created_at) return 0;
+      const elapsed = Date.now() - new Date(shop.created_at).getTime();
+      return Math.max(0, SHOP_DELETE_WINDOW_MS - elapsed);
+    }
+
+    function formatRemainingTime(ms) {
+      if (ms <= 0) return '만료됨';
+      const totalSec = Math.floor(ms / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function getAvgMetrics(shop) {
+      const reviews = shop.reviews || [];
+      if (reviews.length === 0) return { avgRating: '-', avgDifficulty: '-' };
+      const sumR = reviews.reduce((a, r) => a + Number(r.rating || 0), 0);
+      const sumD = reviews.reduce((a, r) => a + Number(r.difficulty || 0), 0);
+      return {
+        avgRating: (sumR / reviews.length).toFixed(1),
+        avgDifficulty: (sumD / reviews.length).toFixed(1)
+      };
+    }
+
+    function getMapCenterObj() {
+      if (!kakaoMap) return DEFAULT_CENTER;
+      const c = kakaoMap.getCenter();
+      return { lat: c.getLat(), lng: c.getLng() };
+    }
+
+    function isShopInViewport(shop) {
+      if (!kakaoMap || !window.kakao || !window.kakao.maps) return true;
+      const bounds = kakaoMap.getBounds();
+      if (!bounds) return true;
+      return bounds.contain(new window.kakao.maps.LatLng(shop.lat, shop.lng));
+    }
+
+    function getFilteredShops(onlyFavorites = false) {
+      const q = state.searchQuery.trim().toLowerCase();
+      return state.shops.filter(shop => {
+        if (shop.status === 'closed') return false;
+        if (onlyFavorites) {
+          if (!state.favorites.has(shop.id)) return false;
+        } else {
+          if (!isShopInViewport(shop)) return false;
+        }
+        if (state.activeFilter === '24h' && !shop.is_24h) return false;
+        if (state.activeFilter === 'newPrize' && !shop.has_new_prize) return false;
+        if (state.activeFilter === 'large' && !(shop.machines || []).includes('대형 크레인')) return false;
+        if (state.activeFilter === 'gacha' && !(shop.machines || []).includes('가챠/캡슐')) return false;
+        if (q) {
+          const hay = [shop.name, shop.area, shop.address, ...(shop.prizes || []), ...(shop.machines || [])].join(' ').toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      }).sort((a, b) => {
+        if (state.sortBy === 'rating') {
+          const ra = getAvgMetrics(a).avgRating;
+          const rb = getAvgMetrics(b).avgRating;
+          if (ra === '-' && rb === '-') return 0;
+          if (ra === '-') return 1;
+          if (rb === '-') return -1;
+          return state.sortDir === 'desc' ? Number(rb) - Number(ra) : Number(ra) - Number(rb);
+        }
+        if (state.sortBy === 'difficulty') {
+          const da = getAvgMetrics(a).avgDifficulty;
+          const db = getAvgMetrics(b).avgDifficulty;
+          if (da === '-' && db === '-') return 0;
+          if (da === '-') return 1;
+          if (db === '-') return -1;
+          return state.sortDir === 'asc' ? Number(da) - Number(db) : Number(db) - Number(da);
+        }
+        const ref = state.userLocation || getMapCenterObj();
+        return getDistanceMeters(ref.lat, ref.lng, a.lat, a.lng) - getDistanceMeters(ref.lat, ref.lng, b.lat, b.lng);
+      });
+    }
+
+    function getFavSeenMap() {
+      try {
+        return JSON.parse(localStorage.getItem(FAV_SEEN_KEY) || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function getRouletteTargetAngle(sectorIndex) {
+      const totalWeight = ROULETTE_SECTORS.reduce((acc, s) => acc + s.weight, 0);
+      let accWeight = 0;
+      for (let i = 0; i < ROULETTE_SECTORS.length; i++) {
+        const w = ROULETTE_SECTORS[i].weight;
+        if (i === sectorIndex) {
+          const midWeight = accWeight + w * 0.5;
+          const midDeg = (midWeight / totalWeight) * 360;
+          return (360 - midDeg) % 360;
+        }
+        accWeight += w;
+      }
+      return 0;
+    }
 
     function buildRouletteSvg(rotationDeg, isContinuousSpin = false) {
       const totalWeight = ROULETTE_SECTORS.reduce((acc, s) => acc + s.weight, 0);
