@@ -281,7 +281,7 @@
         </button>
       </div>
 
-      <div id="shout-list-body" class="flex-1 overflow-y-auto p-3.5 space-y-2 bg-slate-50/70 min-h-[220px]">
+      <div id="shout-list-body" class="h-[340px] max-h-[340px] overflow-y-auto p-3.5 space-y-2 bg-slate-50/70">
         <!-- Populated dynamically -->
       </div>
 
@@ -490,13 +490,15 @@
   <div id="shop-report-modal" class="hidden fixed inset-0 z-[1120] bg-slate-900/55 backdrop-blur-[2px] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-        <h2 class="text-sm font-bold text-slate-900">폐업 / 정보 수정 신고</h2>
+        <h2 id="shop-report-modal-title" class="text-sm font-bold text-slate-900">폐업 / 정보 수정 신고</h2>
         <button id="close-shop-report-modal" type="button" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg" aria-label="닫기">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <form id="shop-report-form" class="p-5 space-y-3">
+        <input type="hidden" id="inp-report-target-type" value="shop" />
         <input type="hidden" id="inp-report-shop-id" />
+        <input type="hidden" id="inp-report-review-id" />
         <div>
           <label for="inp-report-memo" class="block text-xs font-semibold text-slate-700 mb-1">신고 사유 *</label>
           <textarea id="inp-report-memo" rows="3" required maxlength="200" placeholder="예: 폐업 후 다른 매장으로 바뀌었습니다 / 위치가 다릅니다" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-rose-500 outline-none resize-none"></textarea>
@@ -525,6 +527,7 @@
     const SHOP_DELETE_WINDOW_MS = 12 * 60 * 60 * 1000;
     const NEW_SHOP_FLAG_MS = 30 * 24 * 60 * 60 * 1000;
     const REVIEW_COOLDOWN_MS = 30 * 60 * 1000;
+    const SHOUT_EXPIRE_MS = 60 * 60 * 1000;
     const FAV_SEEN_KEY = 'clawmap_fav_seen_v1';
 
     // Lv.1~2 identical, Lv.3+ requires 3x more EXP (1/3 speed)
@@ -554,6 +557,7 @@
       likedReviews: new Set(),
       likedShouts: new Set(),
       myReports: new Set(),
+      myReviewReports: new Set(),
       favNewCounts: new Map(),
       pickLocationMode: false,
       pickedCoords: { ...DEFAULT_CENTER },
@@ -562,7 +566,8 @@
       sortDir: 'asc',
       user: null,
       shouts: [],
-      adminReports: []
+      adminReports: [],
+      adminReviewReports: []
     };
 
     let kakaoMap = null;
@@ -922,19 +927,39 @@
           ${state.user.is_admin ? `
             <div class="border border-rose-200 bg-rose-50/50 rounded-2xl p-3 space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-rose-700">🛡️ 관리자 신고 내역 (${state.adminReports.length})</span>
+                <span class="text-xs font-bold text-rose-700">🛡️ 관리자 신고 내역 (매장 ${state.adminReports.length} · 후기 ${state.adminReviewReports.length})</span>
                 <button type="button" data-action="refresh-admin-reports" class="text-[11px] font-semibold text-rose-600 hover:underline">새로고침</button>
               </div>
-              <div class="max-h-40 overflow-y-auto space-y-1.5">
-                ${state.adminReports.length === 0 ? '<p class="text-[11px] text-slate-400 text-center py-2">접수된 신고 내역이 없습니다.</p>' : state.adminReports.map(rep => {
+              <div class="max-h-44 overflow-y-auto space-y-1.5">
+                ${(state.adminReports.length === 0 && state.adminReviewReports.length === 0) ? '<p class="text-[11px] text-slate-400 text-center py-2">접수된 신고 내역이 없습니다.</p>' : ''}
+                ${state.adminReports.map(rep => {
                   const sName = (rep.shops && rep.shops.name) || '알 수 없는 매장';
                   const uNick = (rep.profiles && rep.profiles.nickname) || '익명';
                   return `
                     <div class="bg-white border border-rose-100 rounded-xl p-2 text-[11px] space-y-0.5">
                       <div class="flex items-center justify-between gap-1">
-                        <span class="font-bold text-slate-800 truncate">${escapeHtml(sName)}</span>
+                        <span class="font-bold text-slate-800 truncate">[매장] ${escapeHtml(sName)}</span>
                         <span class="text-[10px] text-slate-400 shrink-0">${formatDateTime(rep.created_at)}</span>
                       </div>
+                      <p class="text-slate-700 leading-snug">${escapeHtml(rep.memo || '(사유 미입력)')}</p>
+                      <div class="flex items-center justify-between pt-0.5">
+                        <span class="text-[10px] text-slate-500">신고자: ${escapeHtml(uNick)}</span>
+                        ${rep.shop_id ? `<button type="button" data-action="admin-jump-shop" data-id="${rep.shop_id}" class="text-[10px] font-semibold text-indigo-600 hover:underline">매장 이동</button>` : ''}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+                ${state.adminReviewReports.map(rep => {
+                  const sName = (rep.shops && rep.shops.name) || '매장';
+                  const rContent = (rep.reviews && rep.reviews.content) || '(사진 후기)';
+                  const uNick = (rep.profiles && rep.profiles.nickname) || '익명';
+                  return `
+                    <div class="bg-white border border-amber-200 rounded-xl p-2 text-[11px] space-y-0.5">
+                      <div class="flex items-center justify-between gap-1">
+                        <span class="font-bold text-amber-800 truncate">[후기] ${escapeHtml(sName)}</span>
+                        <span class="text-[10px] text-slate-400 shrink-0">${formatDateTime(rep.created_at)}</span>
+                      </div>
+                      <p class="text-[10px] text-slate-500 truncate">대상 후기: "${escapeHtml(rContent)}"</p>
                       <p class="text-slate-700 leading-snug">${escapeHtml(rep.memo || '(사유 미입력)')}</p>
                       <div class="flex items-center justify-between pt-0.5">
                         <span class="text-[10px] text-slate-500">신고자: ${escapeHtml(uNick)}</span>
@@ -989,7 +1014,9 @@
         state.likedReviews = new Set();
         state.likedShouts = new Set();
         state.myReports = new Set();
+        state.myReviewReports = new Set();
         state.adminReports = [];
+        state.adminReviewReports = [];
         updateAuthUI();
         computeFavoriteAlarms();
         return;
@@ -1011,21 +1038,24 @@
         last_checkin_date: (profile && profile.last_checkin_date) || null,
         is_admin: Boolean(profile && profile.is_admin)
       };
-      const [favRes, likeRes, shoutLikeRes, repRes] = await Promise.all([
+      const [favRes, likeRes, shoutLikeRes, repRes, revRepRes] = await Promise.all([
         sb.from('favorites').select('shop_id, memo').eq('user_id', uid),
         sb.from('review_likes').select('review_id').eq('user_id', uid),
         sb.from('shout_likes').select('shout_id').eq('user_id', uid),
-        sb.from('shop_reports').select('shop_id').eq('user_id', uid)
+        sb.from('shop_reports').select('shop_id').eq('user_id', uid),
+        sb.from('review_reports').select('review_id').eq('user_id', uid)
       ]);
       state.favorites = new Set((favRes.data || []).map(r => r.shop_id));
       state.favoriteMemos = new Map((favRes.data || []).map(r => [r.shop_id, r.memo || '']));
       state.likedReviews = new Set((likeRes.data || []).map(r => r.review_id));
       state.likedShouts = new Set((shoutLikeRes.data || []).map(r => r.shout_id));
       state.myReports = new Set((repRes.data || []).map(r => r.shop_id));
+      state.myReviewReports = new Set((revRepRes.data || []).map(r => r.review_id));
       if (state.user.is_admin) {
         await loadAdminReports();
       } else {
         state.adminReports = [];
+        state.adminReviewReports = [];
       }
       updateAuthUI();
       computeFavoriteAlarms();
@@ -1033,13 +1063,21 @@
 
     async function loadAdminReports() {
       if (!state.user || !state.user.is_admin) return;
-      const { data, error } = await sb
-        .from('shop_reports')
-        .select('id, shop_id, reason, memo, created_at, shops(name), profiles(nickname)')
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (!error && data) {
-        state.adminReports = data;
+      const [shopRepRes, revRepRes] = await Promise.all([
+        sb.from('shop_reports')
+          .select('id, shop_id, reason, memo, created_at, shops(name), profiles(nickname)')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        sb.from('review_reports')
+          .select('id, review_id, shop_id, memo, created_at, shops(name), reviews(content), profiles(nickname)')
+          .order('created_at', { ascending: false })
+          .limit(50)
+      ]);
+      if (!shopRepRes.error && shopRepRes.data) {
+        state.adminReports = shopRepRes.data;
+      }
+      if (!revRepRes.error && revRepRes.data) {
+        state.adminReviewReports = revRepRes.data;
       }
     }
 
@@ -1064,28 +1102,42 @@
       }, 5000);
     }
 
+    function filterActiveShouts(list) {
+      const cutoff = Date.now() - SHOUT_EXPIRE_MS;
+      return (list || []).filter(s => {
+        if (!s || !s.created_at) return false;
+        const t = new Date(s.created_at).getTime();
+        return !Number.isNaN(t) && t >= cutoff;
+      });
+    }
+
     function renderShoutModalList() {
       const body = document.getElementById('shout-list-body');
       if (!body) return;
+      state.shouts = filterActiveShouts(state.shouts);
       if (state.shouts.length === 0) {
-        body.innerHTML = '<p class="text-xs text-slate-400 text-center py-8">아직 등록된 사자후가 없습니다. 첫 사자후를 외쳐보세요!</p>';
+        body.innerHTML = '<p class="text-xs text-slate-400 text-center py-8">최근 1시간 내 등록된 사자후가 없습니다. 첫 사자후를 외쳐보세요!</p>';
         return;
       }
       body.innerHTML = state.shouts.map(s => {
         const dt = formatDateTime(s.created_at).slice(11) || '';
         const isLiked = state.likedShouts.has(s.id);
+        const isOwnShout = state.user && s.user_id === state.user.id;
         const likesCount = Number(s.likes_count || 0);
         return `
-          <div class="bg-white border border-slate-200/80 rounded-xl px-3 py-2 shadow-sm">
+          <div class="bg-white border border-slate-200/80 rounded-xl px-3 py-1.5 shadow-sm">
             <div class="flex items-center justify-between gap-2 text-[10px] text-slate-500 mb-0.5">
               <div class="flex items-center gap-1.5">
                 <span class="font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">Lv.${s.level || 1}</span>
                 <span class="font-bold text-slate-800">${escapeHtml(s.nickname)}</span>
               </div>
-              <span>${escapeHtml(dt)}</span>
+              <div class="flex items-center gap-1.5">
+                <span>${escapeHtml(dt)}</span>
+                ${isOwnShout ? `<button type="button" data-action="delete-shout" data-shout-id="${s.id}" class="text-[10px] font-semibold text-rose-500 hover:text-rose-700">삭제</button>` : ''}
+              </div>
             </div>
             <div class="flex items-center justify-between gap-2">
-              <p class="text-xs text-slate-800 leading-snug flex-1 min-w-0">${escapeHtml(s.message)}</p>
+              <p class="text-xs text-slate-800 leading-snug flex-1 min-w-0 truncate">${escapeHtml(s.message)}</p>
               <button type="button" data-action="toggle-shout-like" data-shout-id="${s.id}" class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-semibold transition ${isLiked ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}" title="사자후 공감 (+5P 지급)">
                 <i data-lucide="thumbs-up" class="w-2.5 h-2.5 ${isLiked ? 'fill-indigo-600 text-indigo-600' : ''}"></i>
                 <span>${likesCount}</span>
@@ -1099,13 +1151,15 @@
     }
 
     async function loadShouts() {
+      const oneHourAgoIso = new Date(Date.now() - SHOUT_EXPIRE_MS).toISOString();
       const { data, error } = await sb
         .from('shouts')
         .select('*')
+        .gte('created_at', oneHourAgoIso)
         .order('created_at', { ascending: false })
-        .limit(30);
+        .limit(50);
       if (error) return;
-      const incoming = (data || []).reverse();
+      const incoming = filterActiveShouts((data || []).reverse());
       const prevLastId = state.shouts.length ? state.shouts[state.shouts.length - 1].id : null;
       const nextLast = incoming.length ? incoming[incoming.length - 1] : null;
       state.shouts = incoming;
@@ -1166,7 +1220,7 @@
     async function loadShopsFromSupabase() {
       const { data, error } = await sb
         .from('shops')
-        .select('*, reviews(*, profiles!reviews_user_id_fkey(nickname, exp))')
+        .select('*, creator:profiles!shops_created_by_fkey(nickname), reviews(*, profiles!reviews_user_id_fkey(nickname, exp))')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -1313,6 +1367,7 @@
       const remainMs = getDeleteRemainingMs(shop);
       const canDeleteShop = remainMs > 0;
       const registeredDateStr = formatDateOnly(shop.created_at);
+      const creatorNickname = (shop.creator && shop.creator.nickname) || '익명 제보자';
       const isFreshMonth = isNewWithinMonth(shop);
 
       const allReviews = shop.reviews || [];
@@ -1348,7 +1403,7 @@
               </div>
               <h3 class="text-base font-bold text-slate-900 leading-snug">${escapeHtml(shop.name)}</h3>
               <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(shop.address)}</p>
-              ${registeredDateStr ? `<p class="text-[11px] text-slate-400 mt-0.5">제보 등록일: ${escapeHtml(registeredDateStr)}</p>` : ''}
+              <p class="text-[11px] text-slate-400 mt-0.5">제보자: <span class="font-medium text-slate-600">${escapeHtml(creatorNickname)}</span>${registeredDateStr ? ` · ${escapeHtml(registeredDateStr)}` : ''}</p>
             </div>
             <div class="flex items-start gap-1.5 shrink-0">
               ${canDeleteShop ? `
@@ -1469,6 +1524,9 @@
                 </label>
                 <button type="submit" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition">등록</button>
               </div>
+              <div>
+                <input name="prizes" type="text" maxlength="60" placeholder="목격 경품 태그 추가 (쉼표 구분, 예: 산리오, 치이카와)" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] outline-none focus:border-indigo-400" />
+              </div>
               <div data-role="photo-preview" class="hidden items-center gap-2 pt-0.5">
                 <img src="" alt="첨부 미리보기" class="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
                 <button type="button" data-action="clear-review-photo" class="text-[11px] font-semibold text-rose-600 hover:underline px-1">삭제</button>
@@ -1480,10 +1538,12 @@
                 const isPinned = pinnedIds.has(r.id);
                 const isLiked = state.likedReviews.has(r.id);
                 const isOwnReview = state.user && r.user_id === state.user.id;
+                const isReviewReported = state.myReviewReports.has(r.id);
                 const nickname = (r.profiles && r.profiles.nickname) || '뽑기유저';
                 const exp = (r.profiles && r.profiles.exp) || 0;
                 const lv = getLevelInfo(exp);
                 const dateTimeStr = formatDateTime(r.created_at);
+                const revPrizes = Array.isArray(r.prizes) ? r.prizes.filter(Boolean) : [];
                 return `
                   <div class="${isPinned ? 'bg-amber-50/60 border-amber-200' : 'bg-white border-slate-100'} border rounded-xl p-2 shadow-sm space-y-1">
                     <div class="flex items-center justify-between gap-1.5 text-[10px] text-slate-500 flex-wrap">
@@ -1497,6 +1557,7 @@
                     <div class="flex items-center justify-between gap-2">
                       <div class="min-w-0 flex-1">
                         ${r.content ? `<p class="text-xs text-slate-700 leading-snug">${escapeHtml(r.content)}</p>` : ''}
+                        ${revPrizes.length > 0 ? `<div class="flex flex-wrap gap-1 mt-1">${revPrizes.map(p => `<span class="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-50 text-indigo-700 font-medium">#${escapeHtml(p)}</span>`).join('')}</div>` : ''}
                         ${r.photo_url ? `
                           <button type="button" data-action="view-photo" data-photo="${escapeHtml(r.photo_url)}" class="mt-1 block group">
                             <img src="${escapeHtml(r.photo_url)}" alt="후기 사진" class="w-16 h-16 object-cover rounded-lg border border-slate-200 group-hover:opacity-90 transition" />
@@ -1508,7 +1569,11 @@
                           <button type="button" data-action="delete-review" data-id="${shop.id}" data-review-id="${r.id}" class="px-1.5 py-0.5 rounded border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-semibold transition">
                             삭제
                           </button>
-                        ` : ''}
+                        ` : `
+                          <button type="button" data-action="report-review" data-id="${shop.id}" data-review-id="${r.id}" class="px-1.5 py-0.5 rounded border text-[10px] font-semibold transition ${isReviewReported ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-slate-200 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 text-slate-500'}">
+                            ${isReviewReported ? '신고됨' : '신고'}
+                          </button>
+                        `}
                         <button type="button" data-action="toggle-review-like" data-id="${shop.id}" data-review-id="${r.id}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-semibold transition ${isLiked ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}">
                           <i data-lucide="thumbs-up" class="w-2.5 h-2.5 ${isLiked ? 'fill-indigo-600 text-indigo-600' : ''}"></i>
                           <span>${Number(r.likes_count || 0)}</span>
@@ -1797,6 +1862,43 @@
       });
     }
 
+    function openShopReportModal(shopId) {
+      document.getElementById('shop-report-modal-title').textContent = '폐업 / 정보 수정 신고';
+      document.getElementById('inp-report-target-type').value = 'shop';
+      document.getElementById('inp-report-shop-id').value = shopId;
+      document.getElementById('inp-report-review-id').value = '';
+      document.getElementById('inp-report-memo').placeholder = '예: 폐업 후 다른 매장으로 바뀌었습니다 / 위치가 다릅니다';
+      document.getElementById('inp-report-memo').value = '';
+      document.getElementById('shop-report-modal').classList.remove('hidden');
+    }
+
+    function openReviewReportModal(shopId, reviewId) {
+      if (state.myReviewReports.has(reviewId)) {
+        showToast('이미 신고한 후기입니다.');
+        return;
+      }
+      document.getElementById('shop-report-modal-title').textContent = '후기 신고하기';
+      document.getElementById('inp-report-target-type').value = 'review';
+      document.getElementById('inp-report-shop-id').value = shopId;
+      document.getElementById('inp-report-review-id').value = reviewId;
+      document.getElementById('inp-report-memo').placeholder = '예: 욕설·비방, 허위 정보, 광고성 도배 후기입니다';
+      document.getElementById('inp-report-memo').value = '';
+      document.getElementById('shop-report-modal').classList.remove('hidden');
+    }
+
+    async function deleteOwnShout(shoutId) {
+      if (!state.user) return;
+      askConfirm('작성한 사자후를 삭제하시겠습니까?', async () => {
+        const { error } = await sb.from('shouts').delete().eq('id', shoutId).eq('user_id', state.user.id);
+        if (error) {
+          return showToast('사자후 삭제 실패: ' + (error.message || '오류'));
+        }
+        state.shouts = state.shouts.filter(s => s.id !== shoutId);
+        renderShoutModalList();
+        showToast('사자후가 삭제되었습니다.');
+      });
+    }
+
     async function deleteOwnShop(shopId) {
       if (!state.user) return;
       askConfirm('등록한 매장을 삭제하시겠습니까?', async () => {
@@ -1825,9 +1927,7 @@
         await loadShopsFromSupabase();
         return;
       }
-      document.getElementById('inp-report-shop-id').value = shopId;
-      document.getElementById('inp-report-memo').value = '';
-      document.getElementById('shop-report-modal').classList.remove('hidden');
+      openShopReportModal(shopId);
     }
 
     async function toggleShoutLike(shoutId) {
@@ -1955,6 +2055,9 @@
       } else if (action === 'delete-review') {
         const reviewId = btn.getAttribute('data-review-id');
         requireKakaoAuth('후기 삭제는 카카오 로그인이 필요합니다.', () => deleteReview(reviewId, id));
+      } else if (action === 'report-review') {
+        const reviewId = btn.getAttribute('data-review-id');
+        requireKakaoAuth('후기 신고는 카카오 로그인이 필요합니다.', () => openReviewReportModal(id, reviewId));
       } else if (action === 'delete-shop') {
         requireKakaoAuth('매장 삭제는 카카오 로그인이 필요합니다.', () => deleteOwnShop(id));
       } else if (action === 'delete-fav-memo') {
@@ -1994,9 +2097,11 @@
       const rating = Number(form.querySelector('[name="rating"]').value);
       const difficulty = Number(form.querySelector('[name="difficulty"]').value);
       const content = form.querySelector('[name="text"]').value.trim();
+      const rawPrizes = (form.querySelector('[name="prizes"]') && form.querySelector('[name="prizes"]').value.trim()) || '';
+      const prizes = rawPrizes ? rawPrizes.split(',').map(x => x.trim()).filter(Boolean).slice(0, 6) : [];
       const photoUrl = form.dataset.photoData || null;
-      if (!content && !photoUrl) {
-        showToast('후기 내용이나 사진을 입력해 주세요.');
+      if (!content && !photoUrl && prizes.length === 0) {
+        showToast('후기 내용, 목격 경품 또는 사진을 입력해 주세요.');
         return;
       }
       requireKakaoAuth('한줄 후기 등록은 카카오 로그인이 필요합니다.', async () => {
@@ -2018,6 +2123,7 @@
           rating,
           difficulty,
           content,
+          prizes,
           photo_url: photoUrl
         });
         if (error) {
@@ -2169,6 +2275,12 @@
         if (e.target.id === 'shout-modal') closeShoutModal();
       });
       document.getElementById('shout-list-body').addEventListener('click', (e) => {
+        const delBtn = e.target.closest('[data-action="delete-shout"]');
+        if (delBtn) {
+          const shoutId = delBtn.getAttribute('data-shout-id');
+          requireKakaoAuth('사자후 삭제는 카카오 로그인이 필요합니다.', () => deleteOwnShout(shoutId));
+          return;
+        }
         const btn = e.target.closest('[data-action="toggle-shout-like"]');
         if (!btn) return;
         const shoutId = btn.getAttribute('data-shout-id');
@@ -2415,9 +2527,37 @@
       document.getElementById('shop-report-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!state.user) return;
+        const targetType = document.getElementById('inp-report-target-type').value;
         const shopId = document.getElementById('inp-report-shop-id').value;
+        const reviewId = document.getElementById('inp-report-review-id').value;
         const memo = document.getElementById('inp-report-memo').value.trim();
         if (!memo) return showToast('신고 사유를 입력해 주세요.');
+
+        if (targetType === 'review') {
+          const { error } = await sb.from('review_reports').insert({
+            review_id: reviewId,
+            shop_id: shopId,
+            user_id: state.user.id,
+            memo
+          });
+          document.getElementById('shop-report-modal').classList.add('hidden');
+          if (error) {
+            if (error.code === '23505') {
+              state.myReviewReports.add(reviewId);
+              renderPanels();
+              showToast('이미 신고한 후기입니다.');
+            } else {
+              showToast('후기 신고 접수 중 오류가 발생했습니다.');
+            }
+            return;
+          }
+          state.myReviewReports.add(reviewId);
+          if (state.user.is_admin) await loadAdminReports();
+          showToast('후기 신고가 접수되었습니다.');
+          renderPanels();
+          return;
+        }
+
         const { error } = await sb.from('shop_reports').insert({
           shop_id: shopId,
           user_id: state.user.id,
