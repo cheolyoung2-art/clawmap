@@ -486,6 +486,29 @@
     </div>
   </div>
 
+  <!-- Shop Report Reason Modal -->
+  <div id="shop-report-modal" class="hidden fixed inset-0 z-[1120] bg-slate-900/55 backdrop-blur-[2px] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-slate-900">폐업 / 정보 수정 신고</h2>
+        <button id="close-shop-report-modal" type="button" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg" aria-label="닫기">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="shop-report-form" class="p-5 space-y-3">
+        <input type="hidden" id="inp-report-shop-id" />
+        <div>
+          <label for="inp-report-memo" class="block text-xs font-semibold text-slate-700 mb-1">신고 사유 *</label>
+          <textarea id="inp-report-memo" rows="3" required maxlength="200" placeholder="예: 폐업 후 다른 매장으로 바뀌었습니다 / 위치가 다릅니다" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-rose-500 outline-none resize-none"></textarea>
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button id="cancel-shop-report-btn" type="button" class="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
+          <button type="submit" class="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition">신고 접수</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Toast Banner -->
   <div id="toast" class="hidden fixed bottom-16 md:bottom-6 left-1/2 -translate-x-1/2 z-[1200] bg-slate-900 text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-full shadow-xl transition">
     알림 메시지
@@ -500,6 +523,7 @@
     const CLOSED_REPORT_THRESHOLD = 5;
     const MAX_VISIBLE_PINS = 60;
     const SHOP_DELETE_WINDOW_MS = 12 * 60 * 60 * 1000;
+    const NEW_SHOP_FLAG_MS = 30 * 24 * 60 * 60 * 1000;
     const REVIEW_COOLDOWN_MS = 30 * 60 * 1000;
     const FAV_SEEN_KEY = 'clawmap_fav_seen_v1';
 
@@ -528,6 +552,7 @@
       favorites: new Set(),
       favoriteMemos: new Map(),
       likedReviews: new Set(),
+      likedShouts: new Set(),
       myReports: new Set(),
       favNewCounts: new Map(),
       pickLocationMode: false,
@@ -536,7 +561,8 @@
       sortBy: 'distance',
       sortDir: 'asc',
       user: null,
-      shouts: []
+      shouts: [],
+      adminReports: []
     };
 
     let kakaoMap = null;
@@ -575,6 +601,23 @@
       const hh = String(d.getHours()).padStart(2, '0');
       const mm = String(d.getMinutes()).padStart(2, '0');
       return `${y}.${m}.${day} ${hh}:${mm}`;
+    }
+
+    function formatDateOnly(isoStr) {
+      if (!isoStr) return '';
+      const d = new Date(isoStr);
+      if (Number.isNaN(d.getTime())) return String(isoStr).slice(0, 10);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}.${m}.${day}`;
+    }
+
+    function isNewWithinMonth(shop) {
+      if (!shop || !shop.created_at) return false;
+      const t = new Date(shop.created_at).getTime();
+      if (Number.isNaN(t)) return false;
+      return (Date.now() - t) <= NEW_SHOP_FLAG_MS;
     }
 
     function getLevelInfo(exp) {
@@ -876,6 +919,34 @@
             </button>
           </div>
 
+          ${state.user.is_admin ? `
+            <div class="border border-rose-200 bg-rose-50/50 rounded-2xl p-3 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-rose-700">🛡️ 관리자 신고 내역 (${state.adminReports.length})</span>
+                <button type="button" data-action="refresh-admin-reports" class="text-[11px] font-semibold text-rose-600 hover:underline">새로고침</button>
+              </div>
+              <div class="max-h-40 overflow-y-auto space-y-1.5">
+                ${state.adminReports.length === 0 ? '<p class="text-[11px] text-slate-400 text-center py-2">접수된 신고 내역이 없습니다.</p>' : state.adminReports.map(rep => {
+                  const sName = (rep.shops && rep.shops.name) || '알 수 없는 매장';
+                  const uNick = (rep.profiles && rep.profiles.nickname) || '익명';
+                  return `
+                    <div class="bg-white border border-rose-100 rounded-xl p-2 text-[11px] space-y-0.5">
+                      <div class="flex items-center justify-between gap-1">
+                        <span class="font-bold text-slate-800 truncate">${escapeHtml(sName)}</span>
+                        <span class="text-[10px] text-slate-400 shrink-0">${formatDateTime(rep.created_at)}</span>
+                      </div>
+                      <p class="text-slate-700 leading-snug">${escapeHtml(rep.memo || '(사유 미입력)')}</p>
+                      <div class="flex items-center justify-between pt-0.5">
+                        <span class="text-[10px] text-slate-500">신고자: ${escapeHtml(uNick)}</span>
+                        ${rep.shop_id ? `<button type="button" data-action="admin-jump-shop" data-id="${rep.shop_id}" class="text-[10px] font-semibold text-indigo-600 hover:underline">매장 이동</button>` : ''}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+
           <div class="pt-1 flex justify-end">
             <button type="button" data-action="modal-logout" class="text-xs font-semibold text-rose-600 hover:underline">로그아웃</button>
           </div>
@@ -916,7 +987,9 @@
         state.favorites = new Set();
         state.favoriteMemos = new Map();
         state.likedReviews = new Set();
+        state.likedShouts = new Set();
         state.myReports = new Set();
+        state.adminReports = [];
         updateAuthUI();
         computeFavoriteAlarms();
         return;
@@ -928,26 +1001,46 @@
           showToast(`등록 12시간 지난 제보 보상 +${rewardRes.awarded_points}P가 지급되었습니다!`);
         }
       } catch (e) {}
-      const { data: profile } = await sb.from('profiles').select('nickname, exp, points, megaphone_count, last_checkin_date').eq('id', uid).maybeSingle();
+      const { data: profile } = await sb.from('profiles').select('nickname, exp, points, megaphone_count, last_checkin_date, is_admin').eq('id', uid).maybeSingle();
       state.user = {
         id: uid,
         nickname: ((profile && profile.nickname) || session.user.user_metadata?.name || '뽑기유저').slice(0, 10),
         exp: (profile && profile.exp) || 0,
         points: (profile && profile.points) || 0,
         megaphone_count: (profile && profile.megaphone_count) || 0,
-        last_checkin_date: (profile && profile.last_checkin_date) || null
+        last_checkin_date: (profile && profile.last_checkin_date) || null,
+        is_admin: Boolean(profile && profile.is_admin)
       };
-      const [favRes, likeRes, repRes] = await Promise.all([
+      const [favRes, likeRes, shoutLikeRes, repRes] = await Promise.all([
         sb.from('favorites').select('shop_id, memo').eq('user_id', uid),
         sb.from('review_likes').select('review_id').eq('user_id', uid),
+        sb.from('shout_likes').select('shout_id').eq('user_id', uid),
         sb.from('shop_reports').select('shop_id').eq('user_id', uid)
       ]);
       state.favorites = new Set((favRes.data || []).map(r => r.shop_id));
       state.favoriteMemos = new Map((favRes.data || []).map(r => [r.shop_id, r.memo || '']));
       state.likedReviews = new Set((likeRes.data || []).map(r => r.review_id));
+      state.likedShouts = new Set((shoutLikeRes.data || []).map(r => r.shout_id));
       state.myReports = new Set((repRes.data || []).map(r => r.shop_id));
+      if (state.user.is_admin) {
+        await loadAdminReports();
+      } else {
+        state.adminReports = [];
+      }
       updateAuthUI();
       computeFavoriteAlarms();
+    }
+
+    async function loadAdminReports() {
+      if (!state.user || !state.user.is_admin) return;
+      const { data, error } = await sb
+        .from('shop_reports')
+        .select('id, shop_id, reason, memo, created_at, shops(name), profiles(nickname)')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (!error && data) {
+        state.adminReports = data;
+      }
     }
 
     function flashShoutTicker(shout) {
@@ -980,6 +1073,8 @@
       }
       body.innerHTML = state.shouts.map(s => {
         const dt = formatDateTime(s.created_at).slice(11) || '';
+        const isLiked = state.likedShouts.has(s.id);
+        const likesCount = Number(s.likes_count || 0);
         return `
           <div class="bg-white border border-slate-200/80 rounded-xl px-3 py-2 shadow-sm">
             <div class="flex items-center justify-between gap-2 text-[10px] text-slate-500 mb-0.5">
@@ -989,11 +1084,18 @@
               </div>
               <span>${escapeHtml(dt)}</span>
             </div>
-            <p class="text-xs text-slate-800 leading-snug">${escapeHtml(s.message)}</p>
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-xs text-slate-800 leading-snug flex-1 min-w-0">${escapeHtml(s.message)}</p>
+              <button type="button" data-action="toggle-shout-like" data-shout-id="${s.id}" class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-semibold transition ${isLiked ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}" title="사자후 공감 (+5P 지급)">
+                <i data-lucide="thumbs-up" class="w-2.5 h-2.5 ${isLiked ? 'fill-indigo-600 text-indigo-600' : ''}"></i>
+                <span>${likesCount}</span>
+              </button>
+            </div>
           </div>
         `;
       }).join('');
       body.scrollTop = body.scrollHeight;
+      if (window.lucide) window.lucide.createIcons();
     }
 
     async function loadShouts() {
@@ -1022,7 +1124,11 @@
 
     function subscribeRealtimeShouts() {
       startShoutPolling();
-      if (typeof window.WebSocket === 'undefined') return;
+      const isSandboxedPreview = window.location.protocol === 'about:' ||
+        window.location.href.includes('usercontent.goog') ||
+        typeof window.WebSocket === 'undefined';
+      if (isSandboxedPreview) return;
+
       try {
         sb.channel('public:shouts')
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shouts' }, (payload) => {
@@ -1114,6 +1220,8 @@
         const starPx = starCount === 5 ? 12 : 5.5;
         const starText = starCount === 5 ? '★' : (starCount > 0 ? '★'.repeat(starCount) : '');
         const bellyDiffText = avgDifficulty === '-' ? '' : Number(avgDifficulty).toFixed(1);
+        const isFreshMonth = isNewWithinMonth(shop);
+        const redFlagSvg = `<svg width="9" height="10" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;"><rect x="1.5" y="1" width="1.6" height="12" rx="0.8" fill="#1E293B"/><path d="M3.1 1.5L11 4.4L3.1 7.3V1.5Z" fill="#EF4444" stroke="#FFFFFF" stroke-width="0.7" stroke-linejoin="round"/></svg>`;
 
         const bearSvg = `
           <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1173,7 +1281,7 @@
         el.className = `claw-pin ${isNewHighlight ? 'new-prize' : ''} ${isSelected ? 'selected' : ''}`;
         if (suspected) el.style.opacity = '0.8';
         el.innerHTML = `
-          ${starCount > 0 ? `<span class="pin-star-badge" style="font-size:${starPx}px;white-space:nowrap;">${starText}</span>` : ''}
+          ${(starCount > 0 || isFreshMonth) ? `<span class="pin-star-badge" style="font-size:${starPx}px;white-space:nowrap;display:inline-flex;align-items:center;gap:1px;">${starText}${isFreshMonth ? redFlagSvg : ''}</span>` : ''}
           <div style="width:${size}px;height:${size}px;position:relative;">
             ${pinIconType === 'gacha' ? gachaSvg : pinIconType === 'claw' ? clawSvg : bearSvg}
           </div>
@@ -1204,6 +1312,24 @@
       const alreadyReported = state.myReports.has(shop.id);
       const remainMs = getDeleteRemainingMs(shop);
       const canDeleteShop = remainMs > 0;
+      const registeredDateStr = formatDateOnly(shop.created_at);
+      const isFreshMonth = isNewWithinMonth(shop);
+
+      const allReviews = shop.reviews || [];
+      const pinnedIds = new Set(
+        allReviews
+          .filter(r => Number(r.likes_count || 0) > 0)
+          .sort((a, b) => (Number(b.likes_count || 0) - Number(a.likes_count || 0)) || (new Date(b.created_at) - new Date(a.created_at)))
+          .slice(0, 3)
+          .map(r => r.id)
+      );
+      const pinnedReviews = allReviews
+        .filter(r => pinnedIds.has(r.id))
+        .sort((a, b) => (Number(b.likes_count || 0) - Number(a.likes_count || 0)) || (new Date(b.created_at) - new Date(a.created_at)));
+      const regularReviews = allReviews
+        .filter(r => !pinnedIds.has(r.id))
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const sortedReviews = [...pinnedReviews, ...regularReviews];
 
       return `
         <div class="space-y-3" data-detail-shop="${shop.id}">
@@ -1216,11 +1342,13 @@
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                ${isFreshMonth ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">🚩 신규 등록 (1개월 이내)</span>' : ''}
                 ${shop.has_new_prize ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">✨ 신상 경품</span>' : ''}
                 ${suspected ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">폐업 의심</span>' : ''}
               </div>
               <h3 class="text-base font-bold text-slate-900 leading-snug">${escapeHtml(shop.name)}</h3>
               <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(shop.address)}</p>
+              ${registeredDateStr ? `<p class="text-[11px] text-slate-400 mt-0.5">제보 등록일: ${escapeHtml(registeredDateStr)}</p>` : ''}
             </div>
             <div class="flex items-start gap-1.5 shrink-0">
               ${canDeleteShop ? `
@@ -1348,7 +1476,8 @@
             </form>
 
             <div class="space-y-1.5">
-              ${(shop.reviews || []).length === 0 ? '<p class="text-xs text-slate-400 text-center py-2">아직 후기가 없습니다. 첫 후기를 남겨보세요!</p>' : (shop.reviews || []).map(r => {
+              ${sortedReviews.length === 0 ? '<p class="text-xs text-slate-400 text-center py-2">아직 후기가 없습니다. 첫 후기를 남겨보세요!</p>' : sortedReviews.map(r => {
+                const isPinned = pinnedIds.has(r.id);
                 const isLiked = state.likedReviews.has(r.id);
                 const isOwnReview = state.user && r.user_id === state.user.id;
                 const nickname = (r.profiles && r.profiles.nickname) || '뽑기유저';
@@ -1356,9 +1485,10 @@
                 const lv = getLevelInfo(exp);
                 const dateTimeStr = formatDateTime(r.created_at);
                 return `
-                  <div class="bg-white border border-slate-100 rounded-xl p-2 shadow-sm space-y-1">
+                  <div class="${isPinned ? 'bg-amber-50/60 border-amber-200' : 'bg-white border-slate-100'} border rounded-xl p-2 shadow-sm space-y-1">
                     <div class="flex items-center justify-between gap-1.5 text-[10px] text-slate-500 flex-wrap">
                       <div class="flex items-center gap-1 min-w-0">
+                        ${isPinned ? '<span class="font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0">📌 인기</span>' : ''}
                         <span class="font-semibold text-slate-800 truncate">${escapeHtml(nickname)}</span>
                         <span class="font-bold px-1 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0">Lv.${lv.level}</span>
                       </div>
@@ -1690,28 +1820,39 @@
           return;
         }
         state.myReports.delete(shopId);
+        if (state.user.is_admin) await loadAdminReports();
         showToast('폐점 신고가 취소되었습니다.');
         await loadShopsFromSupabase();
         return;
       }
-      const { error } = await sb.from('shop_reports').insert({
-        shop_id: shopId,
-        user_id: uid,
-        reason: 'closed'
-      });
-      if (error) {
-        if (error.code === '23505') {
-          state.myReports.add(shopId);
-          renderPanels();
-          showToast('이미 신고한 매장입니다.');
-        } else {
-          showToast('신고 접수 중 오류가 발생했습니다.');
+      document.getElementById('inp-report-shop-id').value = shopId;
+      document.getElementById('inp-report-memo').value = '';
+      document.getElementById('shop-report-modal').classList.remove('hidden');
+    }
+
+    async function toggleShoutLike(shoutId) {
+      const uid = state.user.id;
+      const shout = state.shouts.find(s => s.id === shoutId);
+      if (state.likedShouts.has(shoutId)) {
+        const { error } = await sb.from('shout_likes').delete().eq('shout_id', shoutId).eq('user_id', uid);
+        if (!error) {
+          state.likedShouts.delete(shoutId);
+          if (shout) shout.likes_count = Math.max(0, Number(shout.likes_count || 0) - 1);
+          renderShoutModalList();
         }
-        return;
+      } else {
+        const { error } = await sb.from('shout_likes').insert({ shout_id: shoutId, user_id: uid });
+        if (!error) {
+          state.likedShouts.add(shoutId);
+          if (shout) shout.likes_count = Number(shout.likes_count || 0) + 1;
+          renderShoutModalList();
+          if (shout && shout.user_id !== uid) {
+            showToast('사자후에 공감했습니다! (작성자 +5P 지급)');
+          } else {
+            showToast('사자후에 공감했습니다.');
+          }
+        }
       }
-      state.myReports.add(shopId);
-      showToast('폐업/수정 신고가 접수되었습니다.');
-      await loadShopsFromSupabase();
     }
 
     function compressImageFile(file, maxSide = 720, quality = 0.72) {
@@ -2027,6 +2168,12 @@
       document.getElementById('shout-modal').addEventListener('click', (e) => {
         if (e.target.id === 'shout-modal') closeShoutModal();
       });
+      document.getElementById('shout-list-body').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="toggle-shout-like"]');
+        if (!btn) return;
+        const shoutId = btn.getAttribute('data-shout-id');
+        requireKakaoAuth('사자후 공감은 카카오 로그인이 필요합니다.', () => toggleShoutLike(shoutId));
+      });
       document.getElementById('shout-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const input = document.getElementById('inp-shout-msg');
@@ -2099,8 +2246,14 @@
         }
       });
 
-      document.getElementById('open-profile-btn').addEventListener('click', openProfileModal);
-      document.getElementById('header-user-btn').addEventListener('click', openProfileModal);
+      document.getElementById('open-profile-btn').addEventListener('click', async () => {
+        if (state.user && state.user.is_admin) await loadAdminReports();
+        openProfileModal();
+      });
+      document.getElementById('header-user-btn').addEventListener('click', async () => {
+        if (state.user && state.user.is_admin) await loadAdminReports();
+        openProfileModal();
+      });
       document.getElementById('close-profile-modal').addEventListener('click', closeProfileModal);
       document.getElementById('profile-modal-body').addEventListener('click', async (e) => {
         const btn = e.target.closest('[data-action]');
@@ -2109,6 +2262,14 @@
         if (act === 'modal-kakao-login') {
           closeProfileModal();
           openLoginModal('');
+        } else if (act === 'refresh-admin-reports') {
+          await loadAdminReports();
+          openProfileModal();
+          showToast('신고 내역을 새로고침했습니다.');
+        } else if (act === 'admin-jump-shop') {
+          const sid = btn.getAttribute('data-id');
+          closeProfileModal();
+          if (sid) selectShop(sid, true);
         } else if (act === 'daily-checkin') {
           const { data, error } = await sb.rpc('claim_daily_checkin');
           if (error) return showToast('출석체크 오류: ' + (error.message || '오류'));
@@ -2247,6 +2408,37 @@
       document.getElementById('close-photo-modal').addEventListener('click', () => document.getElementById('photo-modal').classList.add('hidden'));
       document.getElementById('photo-modal').addEventListener('click', (e) => {
         if (e.target.id === 'photo-modal') document.getElementById('photo-modal').classList.add('hidden');
+      });
+
+      document.getElementById('close-shop-report-modal').addEventListener('click', () => document.getElementById('shop-report-modal').classList.add('hidden'));
+      document.getElementById('cancel-shop-report-btn').addEventListener('click', () => document.getElementById('shop-report-modal').classList.add('hidden'));
+      document.getElementById('shop-report-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!state.user) return;
+        const shopId = document.getElementById('inp-report-shop-id').value;
+        const memo = document.getElementById('inp-report-memo').value.trim();
+        if (!memo) return showToast('신고 사유를 입력해 주세요.');
+        const { error } = await sb.from('shop_reports').insert({
+          shop_id: shopId,
+          user_id: state.user.id,
+          reason: 'closed',
+          memo
+        });
+        document.getElementById('shop-report-modal').classList.add('hidden');
+        if (error) {
+          if (error.code === '23505') {
+            state.myReports.add(shopId);
+            renderPanels();
+            showToast('이미 신고한 매장입니다.');
+          } else {
+            showToast('신고 접수 중 오류가 발생했습니다.');
+          }
+          return;
+        }
+        state.myReports.add(shopId);
+        if (state.user.is_admin) await loadAdminReports();
+        showToast('폐업/수정 신고가 접수되었습니다.');
+        await loadShopsFromSupabase();
       });
 
       window.addEventListener('resize', () => {
