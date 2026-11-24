@@ -39,6 +39,14 @@
       transform: scale(1.18);
       filter: drop-shadow(0 0 10px rgba(255, 23, 68, 0.72));
     }
+    @keyframes rps-pop {
+      0% { transform: scale(0.75); opacity: 0; }
+      60% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .rps-pop-anim {
+      animation: rps-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
     @keyframes pulse-ring {
       0% { transform: scale(0.9); opacity: 0.75; }
       70% { transform: scale(2.1); opacity: 0; }
@@ -567,7 +575,8 @@
       user: null,
       shouts: [],
       adminReports: [],
-      adminReviewReports: []
+      adminReviewReports: [],
+      rpsState: null
     };
 
     let kakaoMap = null;
@@ -860,12 +869,27 @@
         const exp = state.user.exp || 0;
         const pts = state.user.points || 0;
         const megas = state.user.megaphone_count || 0;
+        const nickChanges = state.user.nickname_change_count || 0;
+        const isFirstNickFree = nickChanges === 0;
         const checkedInToday = state.user.last_checkin_date === getTodayKstDateStr();
         const info = getLevelInfo(exp);
         const pct = info.next
           ? Math.min(100, Math.round(((exp - info.minExp) / (info.next.minExp - info.minExp)) * 100))
           : 100;
         const remainText = info.next ? `다음 레벨까지 ${info.next.minExp - exp} EXP 남음` : '최고 레벨 달성!';
+
+        const rps = state.rpsState;
+        const rpsEmojiMap = { scissors: '✌️', rock: '✊', paper: '✋' };
+        const rpsLabelMap = { scissors: '가위', rock: '바위', paper: '보' };
+        const rpsBotEmoji = rps ? (rpsEmojiMap[rps.bot_choice] || '❓') : '❔';
+        const rpsBotName = rps ? (rpsLabelMap[rps.bot_choice] || '') : '패를 선택하세요';
+        const rpsBadgeHtml = !rps
+          ? '<span class="text-[10px] font-semibold text-slate-400">승리 시 100P ~ 2,000P 랜덤!</span>'
+          : rps.outcome === 'win'
+            ? `<span class="rps-pop-anim inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[11px] font-extrabold shadow-sm">🎉 승리! +${rps.reward.toLocaleString()} P</span>`
+            : rps.outcome === 'draw'
+              ? '<span class="rps-pop-anim inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[11px] font-bold">🤝 무승부 (300P 반환)</span>'
+              : '<span class="rps-pop-anim inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[11px] font-bold">😢 패배 (-300P)</span>';
 
         body.innerHTML = `
           <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
@@ -892,14 +916,51 @@
 
           <form id="nickname-form" class="space-y-1.5">
             <div class="flex items-center justify-between">
-              <label for="inp-nickname" class="block text-xs font-semibold text-slate-700">닉네임 변경</label>
+              <label for="inp-nickname" class="block text-xs font-semibold text-slate-700">닉네임 변경 <span class="text-[10px] font-bold ${isFirstNickFree ? 'text-emerald-600' : 'text-indigo-600'}">(${isFirstNickFree ? '첫 1회 무료' : '1,000P 차감'})</span></label>
               <span class="text-[11px] text-slate-400">최대 10글자</span>
             </div>
             <div class="flex gap-2">
               <input id="inp-nickname" type="text" required maxlength="10" value="${escapeHtml(state.user.nickname)}" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-indigo-500 outline-none" />
-              <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition">저장</button>
+              <button type="submit" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition">${isFirstNickFree ? '무료 변경' : '1,000P 변경'}</button>
             </div>
           </form>
+
+          <!-- Rock-Paper-Scissors Mini Game (300P) -->
+          <div class="rounded-2xl border border-indigo-100 bg-gradient-to-b from-indigo-50/70 to-white p-3.5 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-900">🎮 포인트 가위바위보</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">1회 300P</span>
+            </div>
+
+            <div class="relative flex flex-col items-center justify-center rounded-xl bg-white border border-slate-200/90 py-3 px-2 shadow-inner overflow-hidden">
+              ${rps && rps.outcome === 'win' ? `
+                <span class="rps-pop-anim absolute top-1.5 left-3 text-[10px] font-extrabold text-amber-500">+${rps.reward.toLocaleString()}P</span>
+                <span class="rps-pop-anim absolute top-1.5 right-3 text-[10px] font-extrabold text-indigo-500">✨ JACKPOT</span>
+                <span class="rps-pop-anim absolute bottom-1.5 left-4 text-[10px] font-bold text-emerald-500">WIN!</span>
+                <span class="rps-pop-anim absolute bottom-1.5 right-4 text-[10px] font-bold text-amber-500">+${rps.reward.toLocaleString()}P</span>
+              ` : ''}
+              <div class="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-3xl shadow-sm ${rps ? 'rps-pop-anim' : ''}">
+                ${rpsBotEmoji}
+              </div>
+              <div class="text-[11px] font-semibold text-slate-600 mt-1">${rps ? `상대: ${rpsBotName} (나: ${rpsLabelMap[rps.player_choice]})` : rpsBotName}</div>
+              <div class="mt-1.5">${rpsBadgeHtml}</div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" data-action="play-rps" data-choice="scissors" class="py-2 rounded-xl border ${rps && rps.player_choice === 'scissors' ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 bg-white hover:bg-slate-50'} active:scale-95 transition flex flex-col items-center gap-0.5 shadow-sm">
+                <span class="text-xl">✌️</span>
+                <span class="text-[11px] font-bold text-slate-800">가위</span>
+              </button>
+              <button type="button" data-action="play-rps" data-choice="rock" class="py-2 rounded-xl border ${rps && rps.player_choice === 'rock' ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 bg-white hover:bg-slate-50'} active:scale-95 transition flex flex-col items-center gap-0.5 shadow-sm">
+                <span class="text-xl">✊</span>
+                <span class="text-[11px] font-bold text-slate-800">바위</span>
+              </button>
+              <button type="button" data-action="play-rps" data-choice="paper" class="py-2 rounded-xl border ${rps && rps.player_choice === 'paper' ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 bg-white hover:bg-slate-50'} active:scale-95 transition flex flex-col items-center gap-0.5 shadow-sm">
+                <span class="text-xl">✋</span>
+                <span class="text-[11px] font-bold text-slate-800">보</span>
+              </button>
+            </div>
+          </div>
 
           <!-- Apple-style Megaphone (사자후) Purchase Card -->
           <div class="rounded-2xl bg-gradient-to-br from-[#1D1D1F] to-[#2C2C2E] text-white p-3.5 shadow-md flex items-center justify-between gap-3">
@@ -1036,7 +1097,7 @@
           showToast(`등록 12시간 지난 제보 보상 +${rewardRes.awarded_points}P가 지급되었습니다!`);
         }
       } catch (e) {}
-      const { data: profile } = await sb.from('profiles').select('nickname, exp, points, megaphone_count, last_checkin_date, is_admin').eq('id', uid).maybeSingle();
+      const { data: profile } = await sb.from('profiles').select('nickname, exp, points, megaphone_count, last_checkin_date, is_admin, nickname_change_count').eq('id', uid).maybeSingle();
       state.user = {
         id: uid,
         nickname: ((profile && profile.nickname) || session.user.user_metadata?.name || '뽑기유저').slice(0, 10),
@@ -1044,7 +1105,8 @@
         points: (profile && profile.points) || 0,
         megaphone_count: (profile && profile.megaphone_count) || 0,
         last_checkin_date: (profile && profile.last_checkin_date) || null,
-        is_admin: Boolean(profile && profile.is_admin)
+        is_admin: Boolean(profile && profile.is_admin),
+        nickname_change_count: (profile && profile.nickname_change_count) || 0
       };
       const [favRes, likeRes, shoutLikeRes, repRes, revRepRes] = await Promise.all([
         sb.from('favorites').select('shop_id, memo').eq('user_id', uid),
@@ -2469,9 +2531,28 @@
           updateAuthUI();
           openProfileModal();
           showToast('사자후 확성기 1개를 구매했습니다!');
+        } else if (act === 'play-rps') {
+          const choice = btn.getAttribute('data-choice');
+          if ((state.user.points || 0) < 300) {
+            return showToast('포인트가 부족합니다. (300P 필요)');
+          }
+          const { data, error } = await sb.rpc('play_rps_game', { p_choice: choice });
+          if (error) return showToast('가위바위보 오류: ' + (error.message || '오류'));
+          if (!data || !data.success) return showToast((data && data.message) || '게임 실행에 실패했습니다.');
+          state.user.points = data.points;
+          state.rpsState = data;
+          openProfileModal();
+          if (data.outcome === 'win') {
+            showToast(`가위바위보 승리! +${data.reward.toLocaleString()} P 획득!`);
+          } else if (data.outcome === 'draw') {
+            showToast('무승부! 300P가 반환되었습니다.');
+          } else {
+            showToast('아쉽지만 패배했습니다. (-300P)');
+          }
         } else if (act === 'modal-logout') {
           await sb.auth.signOut();
           state.user = null;
+          state.rpsState = null;
           state.favorites = new Set();
           state.likedReviews = new Set();
           state.myReports = new Set();
@@ -2491,12 +2572,15 @@
           showToast('닉네임은 10글자 이내로 입력해 주세요.');
           return;
         }
-        const { error } = await sb.from('profiles').update({ nickname: newNick }).eq('id', state.user.id);
+        const { data, error } = await sb.rpc('change_nickname', { p_new_nickname: newNick });
         if (error) return showToast('닉네임 변경 실패: ' + (error.message || '오류'));
-        state.user.nickname = newNick;
+        if (!data || !data.success) return showToast((data && data.message) || '닉네임을 변경할 수 없습니다.');
+        state.user.nickname = data.nickname;
+        state.user.points = data.points;
+        state.user.nickname_change_count = data.nickname_change_count;
         updateAuthUI();
-        closeProfileModal();
-        showToast('닉네임이 변경되었습니다!');
+        openProfileModal();
+        showToast(data.cost === 0 ? '첫 닉네임이 무료로 변경되었습니다!' : '닉네임이 변경되었습니다! (-1,000P)');
         await loadShopsFromSupabase();
       });
 
