@@ -210,9 +210,9 @@
         </div>
       </div>
 
-      <!-- Pick Location Banner (Draggable Flag) -->
+      <!-- Pick Location Banner (Draggable Claw Marker) -->
       <div id="pick-mode-banner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-[500] bg-indigo-600/95 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2">
-        <i data-lucide="flag" class="w-3.5 h-3.5 shrink-0"></i>
+        <svg width="15" height="15" viewBox="0 0 36 36" fill="none" class="shrink-0"><rect x="16.5" y="2" width="3" height="6" rx="1.5" fill="#FFFFFF"/><circle cx="18" cy="11" r="4" fill="#FFFFFF"/><path d="M15 13 L8 21 L12 28" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13 L28 21 L24 28" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="24" r="5.5" fill="#FDE047"/></svg>
         <button id="confirm-pick-btn" type="button" class="text-xs font-bold bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-1 rounded-full transition shrink-0">선택</button>
         <button id="cancel-pick-btn" type="button" class="text-xs font-semibold bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-full transition shrink-0">취소</button>
       </div>
@@ -360,8 +360,8 @@
             <div id="picked-coords-text" class="text-indigo-700 font-mono mt-0.5">35.87059, 128.59802</div>
           </div>
           <button id="pick-on-map-btn" type="button" class="shrink-0 px-3 py-1.5 rounded-lg bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold shadow-sm transition flex items-center gap-1">
-            <i data-lucide="flag" class="w-3.5 h-3.5"></i>
-            <span>지도에서 깃발로 찍기</span>
+            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+            <span>지도에서 좌표 찍기</span>
           </button>
         </div>
 
@@ -1899,6 +1899,7 @@
       const creatorNickname = (shop.creator && shop.creator.nickname) || '익명 제보자';
       const isFreshMonth = isNewWithinMonth(shop);
       const isAdmin = Boolean(state.user && state.user.is_admin);
+      const currentIconType = shop.pin_icon || (((shop.machines || []).includes('가챠/캡슐') && !(shop.machines || []).includes('대형 크레인')) ? 'gacha' : 'bear');
 
       const allReviews = shop.reviews || [];
       const pinnedIds = new Set(
@@ -1956,20 +1957,33 @@
           </div>
 
           ${isAdmin ? `
-            <div class="bg-slate-900 text-white rounded-xl p-2.5 flex items-center justify-between gap-2">
-              <span class="text-[11px] font-bold text-slate-200 shrink-0">🛡️ 관리자 핀 색상</span>
-              <div class="flex items-center gap-1.5 flex-wrap justify-end">
-                ${[
-                  { hex: '#1D1D1F', label: '블랙' },
-                  { hex: '#4F46E5', label: '인디고' },
-                  { hex: '#0EA5E9', label: '스카이' },
-                  { hex: '#10B981', label: '민트' },
-                  { hex: '#F59E0B', label: '앰버' },
-                  { hex: '#EC4899', label: '핑크' }
-                ].map(c => {
-                  const active = (shop.pin_color || '#1D1D1F').toUpperCase() === c.hex;
-                  return `<button type="button" data-action="admin-change-pin-color" data-id="${shop.id}" data-color="${c.hex}" title="${c.label}" class="w-5 h-5 rounded-full border-2 ${active ? 'border-white scale-110 ring-2 ring-indigo-400' : 'border-white/40 opacity-80 hover:opacity-100'} transition" style="background-color:${c.hex};"></button>`;
-                }).join('')}
+            <div class="bg-slate-900 text-white rounded-xl p-2.5 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[11px] font-bold text-slate-200 shrink-0">🛡️ 관리자 핀 색상</span>
+                <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                  ${[
+                    { hex: '#1D1D1F', label: '블랙' },
+                    { hex: '#4F46E5', label: '인디고' },
+                    { hex: '#0EA5E9', label: '스카이' },
+                    { hex: '#10B981', label: '민트' },
+                    { hex: '#F59E0B', label: '앰버' },
+                    { hex: '#EC4899', label: '핑크' }
+                  ].map(c => {
+                    const active = (shop.pin_color || '#1D1D1F').toUpperCase() === c.hex;
+                    return `<button type="button" data-action="admin-change-pin-color" data-id="${shop.id}" data-color="${c.hex}" title="${c.label}" class="w-5 h-5 rounded-full border-2 ${active ? 'border-white scale-110 ring-2 ring-indigo-400' : 'border-white/40 opacity-80 hover:opacity-100'} transition" style="background-color:${c.hex};"></button>`;
+                  }).join('')}
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-white/10">
+                <span class="text-[11px] font-bold text-slate-200 shrink-0">🛡️ 관리자 아이콘 모양</span>
+                <div class="flex items-center gap-1.5">
+                  <button type="button" data-action="admin-change-pin-icon" data-id="${shop.id}" data-icon="bear" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1 ${currentIconType === 'bear' ? 'bg-indigo-600 text-white ring-1 ring-white/50' : 'bg-white/10 text-slate-300 hover:bg-white/20'}">
+                    <span>🧸 인형뽑기</span>
+                  </button>
+                  <button type="button" data-action="admin-change-pin-icon" data-id="${shop.id}" data-icon="gacha" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1 ${currentIconType === 'gacha' ? 'bg-indigo-600 text-white ring-1 ring-white/50' : 'bg-white/10 text-slate-300 hover:bg-white/20'}">
+                    <span>🔮 가챠</span>
+                  </button>
+                </div>
               </div>
             </div>
           ` : ''}
@@ -2009,18 +2023,10 @@
             </div>
           </div>
 
-          <div class="space-y-2">
-            <div>
-              <div class="text-[11px] font-semibold text-slate-500 mb-1">보유 기계</div>
-              <div class="flex flex-wrap gap-1">
-                ${(shop.machines || []).map(m => `<span class="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-medium">${escapeHtml(m)}</span>`).join('')}
-              </div>
-            </div>
-            <div>
-              <div class="text-[11px] font-semibold text-slate-500 mb-1">최근 목격된 경품</div>
-              <div class="flex flex-wrap gap-1">
-                ${(shop.prizes || []).map(pr => `<span class="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-medium">#${escapeHtml(pr)}</span>`).join('')}
-              </div>
+          <div>
+            <div class="text-[11px] font-semibold text-slate-500 mb-1">최근 목격된 경품</div>
+            <div class="flex flex-wrap gap-1">
+              ${(shop.prizes || []).slice(0, 12).map(pr => `<span class="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-medium">#${escapeHtml(pr)}</span>`).join('')}
             </div>
           </div>
 
@@ -2454,20 +2460,6 @@
       document.getElementById('shop-report-modal').classList.remove('hidden');
     }
 
-    function openReviewReportModal(shopId, reviewId) {
-      if (state.myReviewReports.has(reviewId)) {
-        showToast('이미 신고한 후기입니다.');
-        return;
-      }
-      document.getElementById('shop-report-modal-title').textContent = '후기 신고하기';
-      document.getElementById('inp-report-target-type').value = 'review';
-      document.getElementById('inp-report-shop-id').value = shopId;
-      document.getElementById('inp-report-review-id').value = reviewId;
-      document.getElementById('inp-report-memo').placeholder = '예: 욕설·비방, 허위 정보, 광고성 도배 후기입니다';
-      document.getElementById('inp-report-memo').value = '';
-      document.getElementById('shop-report-modal').classList.remove('hidden');
-    }
-
     async function deleteOwnShout(shoutId) {
       if (!state.user) return;
       askConfirm('작성한 사자후를 삭제하시겠습니까?', async () => {
@@ -2656,6 +2648,21 @@
           renderAll();
           showToast('매장 핀 색상이 변경되었습니다.');
         })();
+      } else if (action === 'admin-change-pin-icon') {
+        const nextIcon = btn.getAttribute('data-icon') || 'bear';
+        if (!state.user || !state.user.is_admin) return;
+        (async () => {
+          const nextMachines = nextIcon === 'gacha' ? ['가챠/캡슐'] : ['인형뽑기'];
+          const { error } = await sb.from('shops').update({ pin_icon: nextIcon, machines: nextMachines }).eq('id', id);
+          if (error) return showToast('아이콘 모양 변경 실패: ' + (error.message || '권한 오류'));
+          const targetShop = state.shops.find(s => s.id === id);
+          if (targetShop) {
+            targetShop.pin_icon = nextIcon;
+            targetShop.machines = nextMachines;
+          }
+          renderAll();
+          showToast(nextIcon === 'gacha' ? '아이콘이 가챠(캡슐)로 변경되었습니다.' : '아이콘이 인형뽑기(곰돌이)로 변경되었습니다.');
+        })();
       } else if (action === 'delete-fav-memo') {
         requireKakaoAuth('즐겨찾기 메모 삭제는 카카오 로그인이 필요합니다.', async () => {
           const { error } = await sb.from('favorites').update({ memo: '' }).eq('shop_id', id).eq('user_id', state.user.id);
@@ -2694,7 +2701,7 @@
       const difficulty = Number(form.querySelector('[name="difficulty"]').value);
       const content = form.querySelector('[name="text"]').value.trim();
       const hashtagMatches = content.match(/#([^\s#,]+)/g) || [];
-      const prizes = Array.from(new Set(hashtagMatches.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean))).slice(0, 6);
+      const prizes = Array.from(new Set(hashtagMatches.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean))).slice(0, 12);
       const photoUrl = form.dataset.photoData || null;
       if (!content && !photoUrl) {
         showToast('후기 내용(#경품태그 포함) 또는 사진을 입력해 주세요.');
@@ -2761,17 +2768,28 @@
       );
     }
 
-    function createFlagMarkerImage() {
+    function createClawMarkerImage() {
       const svg = encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="44" viewBox="0 0 40 44">
-          <ellipse cx="20" cy="40" rx="7" ry="2.5" fill="rgba(15,23,42,0.28)"/>
-          <rect x="18" y="6" width="3.5" height="34" rx="1.75" fill="#1E293B"/>
-          <path d="M21 7 L37 13.5 L21 20 Z" fill="#EF4444" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
-          <circle cx="19.75" cy="5.5" r="2.5" fill="#F59E0B"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="44" height="48" viewBox="0 0 44 48">
+          <ellipse cx="22" cy="44" rx="8" ry="2.8" fill="rgba(15,23,42,0.28)"/>
+          <g stroke="#FFFFFF" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+            <rect x="20" y="3" width="4" height="7" rx="2" fill="#4F46E5"/>
+            <path d="M18.5 15 L9.5 24.5 L14.5 33" stroke="#FFFFFF" stroke-width="6"/>
+            <path d="M25.5 15 L34.5 24.5 L29.5 33" stroke="#FFFFFF" stroke-width="6"/>
+            <circle cx="22" cy="13" r="5" fill="#4F46E5"/>
+            <circle cx="22" cy="28" r="7" fill="#EF4444"/>
+          </g>
+          <rect x="20" y="3" width="4" height="7" rx="2" fill="#4F46E5"/>
+          <path d="M18.5 15 L9.5 24.5 L14.5 33" stroke="#1E293B" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M25.5 15 L34.5 24.5 L29.5 33" stroke="#1E293B" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="22" cy="13" r="5" fill="#4F46E5"/>
+          <circle cx="22" cy="13" r="1.8" fill="#FFFFFF"/>
+          <circle cx="22" cy="28" r="7" fill="#EF4444"/>
+          <circle cx="22" cy="28" r="2.4" fill="#FFFFFF"/>
         </svg>
       `);
-      const size = new window.kakao.maps.Size(40, 44);
-      const option = { offset: new window.kakao.maps.Point(20, 40) };
+      const size = new window.kakao.maps.Size(44, 48);
+      const option = { offset: new window.kakao.maps.Point(22, 44) };
       return new window.kakao.maps.MarkerImage('data:image/svg+xml;charset=utf-8,' + svg, size, option);
     }
 
@@ -2787,7 +2805,7 @@
       pickerMarker = new window.kakao.maps.Marker({
         position: startPos,
         draggable: true,
-        image: createFlagMarkerImage(),
+        image: createClawMarkerImage(),
         zIndex: 20
       });
       pickerMarker.setMap(kakaoMap);
