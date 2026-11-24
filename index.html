@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=451cb015ea1538cac79e23e488f10150&autoload=false"></script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=451cb015ea1538cac79e23e488f10150&libraries=services&autoload=false"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body {
@@ -281,7 +281,7 @@
           </span>
           <div>
             <h2 class="text-sm font-bold text-slate-900">동네 사자후 대화창</h2>
-            <p class="text-[10px] text-slate-500">사자후 아이템으로 작성하면 접속자 전체에게 5초간 표시됩니다</p>
+            <p class="text-[10px] text-slate-500">사자후 아이템으로 작성하면 다음 사자후가 올라올 때까지 전광판에 표시됩니다</p>
           </div>
         </div>
         <button id="close-shout-modal" type="button" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg" aria-label="닫기">
@@ -570,11 +570,12 @@
     ];
 
     let kakaoMap = null;
+    let kakaoGeocoder = null;
     let userOverlay = null;
     let pickerMarker = null;
     const overlaysById = new Map();
+    const resolvedAddressCache = new Map();
     let toastTimer = null;
-    let shoutTickerTimer = null;
     let shoutPollTimer = null;
     let isProgrammaticPan = false;
 
@@ -716,7 +717,7 @@
         if (shop.status === 'closed') return false;
         if (onlyFavorites) {
           if (!state.favorites.has(shop.id)) return false;
-        } else {
+        } else if (!q) {
           if (!isShopInViewport(shop)) return false;
         }
         if (state.activeFilter === '24h' && !shop.is_24h) return false;
@@ -724,7 +725,17 @@
         if (state.activeFilter === 'large' && !(shop.machines || []).includes('대형 크레인')) return false;
         if (state.activeFilter === 'gacha' && !(shop.machines || []).includes('가챠/캡슐')) return false;
         if (q) {
-          const hay = [shop.name, shop.area, shop.address, ...(shop.prizes || []), ...(shop.machines || [])].join(' ').toLowerCase();
+          const reviewPrizes = (shop.reviews || []).flatMap(r => Array.isArray(r.prizes) ? r.prizes : []);
+          const resolvedAddr = resolvedAddressCache.get(shop.id) || '';
+          const hay = [
+            shop.name,
+            shop.area,
+            shop.address,
+            resolvedAddr,
+            ...(shop.prizes || []),
+            ...reviewPrizes,
+            ...(shop.machines || [])
+          ].join(' ').toLowerCase();
           if (!hay.includes(q)) return false;
         }
         return true;
@@ -1602,24 +1613,23 @@
     }
 
     function flashShoutTicker(shout) {
-      if (!shout) return;
       const ticker = document.getElementById('shout-ticker');
       const badge = document.getElementById('shout-ticker-badge');
       const textEl = document.getElementById('shout-ticker-text');
       if (!ticker || !badge || !textEl) return;
 
-      badge.classList.remove('hidden');
-      textEl.textContent = `[Lv.${shout.level || 1} ${shout.nickname}] ${shout.message}`;
-      ticker.classList.remove('bg-slate-100/90', 'text-slate-500');
-      ticker.classList.add('bg-indigo-50', 'text-indigo-900', 'font-semibold', 'ring-1', 'ring-indigo-200');
-
-      if (shoutTickerTimer) clearTimeout(shoutTickerTimer);
-      shoutTickerTimer = setTimeout(() => {
+      if (!shout) {
         badge.classList.add('hidden');
         textEl.textContent = '전체 버튼을 눌러 동네 사자후를 확인해 보세요';
         ticker.classList.add('bg-slate-100/90', 'text-slate-500');
         ticker.classList.remove('bg-indigo-50', 'text-indigo-900', 'font-semibold', 'ring-1', 'ring-indigo-200');
-      }, 5000);
+        return;
+      }
+
+      badge.classList.remove('hidden');
+      textEl.textContent = `[Lv.${shout.level || 1} ${shout.nickname}] ${shout.message}`;
+      ticker.classList.remove('bg-slate-100/90', 'text-slate-500');
+      ticker.classList.add('bg-indigo-50', 'text-indigo-900', 'font-semibold', 'ring-1', 'ring-indigo-200');
     }
 
     function filterActiveShouts(list) {
@@ -1688,12 +1698,9 @@
         .limit(50);
       if (error) return;
       const incoming = filterActiveShouts((data || []).reverse());
-      const prevLastId = state.shouts.length ? state.shouts[state.shouts.length - 1].id : null;
-      const nextLast = incoming.length ? incoming[incoming.length - 1] : null;
       state.shouts = incoming;
-      if (prevLastId && nextLast && nextLast.id !== prevLastId) {
-        flashShoutTicker(nextLast);
-      }
+      const latest = incoming.length ? incoming[incoming.length - 1] : null;
+      flashShoutTicker(latest);
       renderShoutModalList();
     }
 
@@ -1804,7 +1811,7 @@
         const starText = starCount === 5 ? '★' : (starCount > 0 ? '★'.repeat(starCount) : '');
         const bellyDiffText = avgDifficulty === '-' ? '' : Number(avgDifficulty).toFixed(1);
         const isFreshMonth = isNewWithinMonth(shop);
-        const redFlagSvg = `<svg width="9" height="10" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;"><rect x="1.5" y="1" width="1.6" height="12" rx="0.8" fill="#1E293B"/><path d="M3.1 1.5L11 4.4L3.1 7.3V1.5Z" fill="#EF4444" stroke="#FFFFFF" stroke-width="0.7" stroke-linejoin="round"/></svg>`;
+        const fireworkSvg = `<svg width="11" height="11" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="8" r="2.1" fill="#F59E0B"/><path d="M8 1.5V4.2M8 11.8V14.5M1.5 8H4.2M11.8 8H14.5M3.4 3.4L5.3 5.3M10.7 10.7L12.6 12.6M12.6 3.4L10.7 5.3M5.3 10.7L3.4 12.6" stroke="#EF4444" stroke-width="1.6" stroke-linecap="round"/><circle cx="3.4" cy="3.4" r="1.1" fill="#EC4899"/><circle cx="12.6" cy="3.4" r="1.1" fill="#6366F1"/><circle cx="12.6" cy="12.6" r="1.1" fill="#10B981"/><circle cx="3.4" cy="12.6" r="1.1" fill="#F59E0B"/></svg>`;
 
         const bearSvg = `
           <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1864,7 +1871,7 @@
         el.className = `claw-pin ${isNewHighlight ? 'new-prize' : ''} ${isSelected ? 'selected' : ''}`;
         if (suspected) el.style.opacity = '0.8';
         el.innerHTML = `
-          ${(starCount > 0 || isFreshMonth) ? `<span class="pin-star-badge" style="font-size:${starPx}px;white-space:nowrap;display:inline-flex;align-items:center;gap:1px;">${starText}${isFreshMonth ? redFlagSvg : ''}</span>` : ''}
+          ${(starCount > 0 || isFreshMonth) ? `<span class="pin-star-badge" style="font-size:${starPx}px;white-space:nowrap;display:inline-flex;align-items:center;gap:1px;">${starText}${isFreshMonth ? fireworkSvg : ''}</span>` : ''}
           <div style="width:${size}px;height:${size}px;position:relative;">
             ${pinIconType === 'gacha' ? gachaSvg : pinIconType === 'claw' ? clawSvg : bearSvg}
           </div>
@@ -1900,6 +1907,7 @@
       const isFreshMonth = isNewWithinMonth(shop);
       const isAdmin = Boolean(state.user && state.user.is_admin);
       const currentIconType = shop.pin_icon || (((shop.machines || []).includes('가챠/캡슐') && !(shop.machines || []).includes('대형 크레인')) ? 'gacha' : 'bear');
+      const resolvedAddr = resolvedAddressCache.get(shop.id) || '';
 
       const allReviews = shop.reviews || [];
       const pinnedIds = new Set(
@@ -1928,13 +1936,22 @@
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-1.5 mb-1">
-                ${isFreshMonth ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">🚩 신규 등록 (1개월 이내)</span>' : ''}
+                ${isFreshMonth ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">🎉 신규 등록 (1개월 이내)</span>' : ''}
                 ${shop.has_new_prize ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">✨ 신상 경품</span>' : ''}
                 ${suspected ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">폐업 의심</span>' : ''}
               </div>
               <h3 class="text-base font-bold text-slate-900 leading-snug">${escapeHtml(shop.name)}</h3>
               <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(shop.address)}</p>
-              <p class="text-[11px] text-slate-400 mt-0.5">제보자: <span class="font-medium text-slate-600">${escapeHtml(creatorNickname)}</span>${registeredDateStr ? ` · ${escapeHtml(registeredDateStr)}` : ''}</p>
+              <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                <span data-resolved-address="${shop.id}" class="text-[11px] font-medium text-indigo-700 bg-indigo-50/80 border border-indigo-100 px-2 py-0.5 rounded-lg truncate max-w-[230px]">
+                  📍 ${escapeHtml(resolvedAddr || '주소 변환 중...')}
+                </span>
+                <button type="button" data-action="copy-shop-address" data-id="${shop.id}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-[10px] font-semibold transition shrink-0">
+                  <i data-lucide="copy" class="w-3 h-3"></i>
+                  <span>주소 복사</span>
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">제보자: <span class="font-medium text-slate-600">${escapeHtml(creatorNickname)}</span>${registeredDateStr ? ` · ${escapeHtml(registeredDateStr)}` : ''}</p>
             </div>
             <div class="flex items-start gap-1.5 shrink-0">
               ${isAdmin ? `
@@ -2031,16 +2048,19 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <button type="button" data-action="focus-map" data-id="${shop.id}" class="flex-1 py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5">
-              <i data-lucide="navigation" class="w-3.5 h-3.5"></i> 지도에서 보기
+            <button type="button" data-action="open-navi" data-id="${shop.id}" class="flex-1 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm">
+              <i data-lucide="corner-up-right" class="w-3.5 h-3.5"></i> 길찾기 (네비)
+            </button>
+            <button type="button" data-action="focus-map" data-id="${shop.id}" class="py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5">
+              <i data-lucide="navigation" class="w-3.5 h-3.5"></i> 지도
             </button>
             <button
               type="button"
               data-action="report-closed"
               data-id="${shop.id}"
-              class="py-2 px-3 rounded-xl border text-xs font-semibold transition ${alreadyReported ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100' : 'border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600'}"
+              class="py-2 px-2.5 rounded-xl border text-xs font-semibold transition ${alreadyReported ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100' : 'border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600'}"
             >
-              ${alreadyReported ? '폐점 신고 취소' : '폐업/수정 신고'}
+              ${alreadyReported ? '신고 취소' : '신고'}
             </button>
           </div>
 
@@ -2343,6 +2363,9 @@
         markFavoriteShopSeen(shopId);
       }
       const shop = state.shops.find(s => s.id === shopId);
+      if (shop) {
+        resolveShopAddress(shop);
+      }
       if (shop && panMap && kakaoMap) {
         if (window.innerWidth < 768) state.mobTab = 'map';
         renderAll();
@@ -2353,6 +2376,52 @@
       } else {
         renderAll();
       }
+    }
+
+    function resolveShopAddress(shop) {
+      if (!shop) return;
+      if (resolvedAddressCache.has(shop.id)) return;
+      const fallbackText = `${shop.lat.toFixed(5)}, ${shop.lng.toFixed(5)}`;
+      if (!kakaoGeocoder && window.kakao && window.kakao.maps && window.kakao.maps.services) {
+        kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+      }
+      if (!kakaoGeocoder) {
+        resolvedAddressCache.set(shop.id, shop.address || fallbackText);
+        document.querySelectorAll(`[data-resolved-address="${shop.id}"]`).forEach(el => {
+          el.textContent = `📍 ${shop.address || fallbackText}`;
+        });
+        return;
+      }
+      kakaoGeocoder.coord2Address(shop.lng, shop.lat, (result, status) => {
+        if (status === window.kakao.maps.services.Status.OK && result && result[0]) {
+          const road = result[0].road_address && result[0].road_address.address_name;
+          const jibun = result[0].address && result[0].address.address_name;
+          const addr = road || jibun || shop.address || fallbackText;
+          resolvedAddressCache.set(shop.id, addr);
+        } else {
+          resolvedAddressCache.set(shop.id, shop.address || fallbackText);
+        }
+        const finalAddr = resolvedAddressCache.get(shop.id);
+        document.querySelectorAll(`[data-resolved-address="${shop.id}"]`).forEach(el => {
+          el.textContent = `📍 ${finalAddr}`;
+        });
+      });
+    }
+
+    function copyTextToClipboard(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(`주소가 복사되었습니다: ${text}`);
+      } catch (e) {
+        showToast('주소 복사에 실패했습니다.');
+      }
+      document.body.removeChild(ta);
     }
 
     // Never pan/reset scroll when toggling favorite!
@@ -2601,6 +2670,19 @@
       } else if (action === 'back-to-list') {
         state.selectedShopId = null;
         renderAll();
+      } else if (action === 'copy-shop-address') {
+        const shop = state.shops.find(s => s.id === id);
+        if (shop) {
+          const addr = resolvedAddressCache.get(shop.id) || shop.address || `${shop.lat.toFixed(5)}, ${shop.lng.toFixed(5)}`;
+          copyTextToClipboard(addr);
+        }
+      } else if (action === 'open-navi') {
+        const shop = state.shops.find(s => s.id === id);
+        if (shop) {
+          const destName = encodeURIComponent(shop.name || '뽑기방');
+          const url = `https://map.kakao.com/link/to/${destName},${shop.lat},${shop.lng}`;
+          window.open(url, '_blank', 'noopener');
+        }
       } else if (action === 'focus-map') {
         const shop = state.shops.find(s => s.id === id);
         if (shop && kakaoMap) {
@@ -2848,6 +2930,9 @@
           center: new window.kakao.maps.LatLng(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng),
           level: 4
         });
+        if (window.kakao.maps.services) {
+          kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+        }
         window.kakao.maps.event.addListener(kakaoMap, 'click', (mouseEvent) => {
           if (!state.pickLocationMode) return;
           const latlng = mouseEvent.latLng;
@@ -2879,7 +2964,24 @@
 
       const searchInput = document.getElementById('search-input');
       const clearSearchBtn = document.getElementById('clear-search-btn');
-      searchInput.addEventListener('input', () => { state.searchQuery = searchInput.value; clearSearchBtn.classList.toggle('hidden', !state.searchQuery); renderAll(); });
+      const handleSearchUpdate = () => {
+        state.searchQuery = searchInput.value;
+        clearSearchBtn.classList.toggle('hidden', !state.searchQuery);
+        if (state.searchQuery.trim()) {
+          state.selectedShopId = null;
+          if (window.innerWidth < 768 && state.mobTab === 'map') {
+            state.mobTab = 'list';
+          }
+          const matches = getFilteredShops(false);
+          if (matches.length > 0 && kakaoMap && window.kakao && window.kakao.maps) {
+            isProgrammaticPan = true;
+            setTimeout(() => { isProgrammaticPan = false; }, 450);
+            kakaoMap.panTo(new window.kakao.maps.LatLng(matches[0].lat, matches[0].lng));
+          }
+        }
+        renderAll();
+      };
+      searchInput.addEventListener('input', handleSearchUpdate);
       clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; state.searchQuery = ''; clearSearchBtn.classList.add('hidden'); renderAll(); });
 
       document.getElementById('open-shout-btn').addEventListener('click', openShoutModal);
