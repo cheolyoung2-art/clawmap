@@ -273,7 +273,7 @@
           </span>
           <div>
             <h2 class="text-sm font-bold text-slate-900">동네 사자후 대화창</h2>
-            <p class="text-[10px] text-slate-500">사자후 아이템으로 작성하면 접속자 전체에게 2초간 표시됩니다</p>
+            <p class="text-[10px] text-slate-500">사자후 아이템으로 작성하면 접속자 전체에게 5초간 표시됩니다</p>
           </div>
         </div>
         <button id="close-shout-modal" type="button" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg" aria-label="닫기">
@@ -317,7 +317,7 @@
       <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
         <div>
           <h2 class="text-base font-bold text-slate-900">신규 뽑기방 제보하기</h2>
-          <p class="text-xs text-slate-500 mt-0.5">반경 10m 이내 중복 매장은 등록할 수 없습니다. (등록 후 12시간 내 삭제 가능)</p>
+          <p class="text-xs text-slate-500 mt-0.5">반경 5m 이내 중복 매장은 등록할 수 없습니다. (등록 후 12시간 내 삭제 가능)</p>
         </div>
         <button id="close-report-modal" type="button" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition" aria-label="모달 닫기">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -343,14 +343,36 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <div>
-            <label for="inp-address" class="block text-xs font-semibold text-slate-700 mb-1">위치 / 도로명 주소</label>
-            <input id="inp-address" type="text" placeholder="예: 대구 중구 동성로2길 80" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-indigo-500 outline-none" />
+            <label for="inp-address" class="block text-xs font-semibold text-slate-700 mb-1">상세위치 설명</label>
+            <input id="inp-address" type="text" placeholder="예: 동성로 CGV 맞은편 1층 골목" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-indigo-500 outline-none" />
           </div>
           <div>
             <span class="block text-xs font-semibold text-slate-700 mb-1">영업시간</span>
             <label class="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 bg-white cursor-pointer hover:bg-slate-50 text-sm">
               <input type="checkbox" id="inp-24h" checked class="w-4 h-4 accent-indigo-600" />
               <span class="font-medium text-slate-800">24시간 운영</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Initial Pin Icon Picker (3 Options) -->
+        <div>
+          <span class="block text-xs font-semibold text-slate-700 mb-1.5">지도 아이콘 모양 <span class="font-normal text-slate-400">(3가지 중 선택)</span></span>
+          <div id="pin-icon-picker" class="grid grid-cols-3 gap-2">
+            <label class="cursor-pointer flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+              <input type="radio" name="pin_icon" value="bear" checked class="sr-only" />
+              <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><circle cx="10" cy="10" r="4.2" fill="#1D1D1F"/><circle cx="26" cy="10" r="4.2" fill="#1D1D1F"/><circle cx="18" cy="16.5" r="8.8" fill="#1D1D1F"/><ellipse cx="18" cy="27" rx="7.2" ry="5.8" fill="#1D1D1F"/><circle cx="15" cy="15.2" r="1.15" fill="#FFF"/><circle cx="21" cy="15.2" r="1.15" fill="#FFF"/></svg>
+              <span class="text-xs font-semibold">곰돌이</span>
+            </label>
+            <label class="cursor-pointer flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+              <input type="radio" name="pin_icon" value="claw" class="sr-only" />
+              <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><rect x="16.5" y="2" width="3" height="6" rx="1.5" fill="#1D1D1F"/><circle cx="18" cy="11" r="4" fill="#1D1D1F"/><path d="M15 13 L8 21 L12 28" stroke="#1D1D1F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13 L28 21 L24 28" stroke="#1D1D1F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="24" r="5.5" fill="#1D1D1F"/></svg>
+              <span class="text-xs font-semibold">집게</span>
+            </label>
+            <label class="cursor-pointer flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+              <input type="radio" name="pin_icon" value="gacha" class="sr-only" />
+              <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="12" fill="#1D1D1F"/><path d="M6 18H30" stroke="#FFF" stroke-width="2.2"/><circle cx="18" cy="18" r="3.4" fill="#FFF"/></svg>
+              <span class="text-xs font-semibold">캡슐</span>
             </label>
           </div>
         </div>
@@ -844,7 +866,7 @@
                   <span>사자후 확성기</span>
                   <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/15 text-amber-200">보유 ${megas}개</span>
                 </div>
-                <p class="text-[10px] text-slate-300 truncate mt-0.5">전체 접속자에게 내 글 2초간 노출</p>
+                <p class="text-[10px] text-slate-300 truncate mt-0.5">전체 접속자에게 내 글 5초간 노출</p>
               </div>
             </div>
             <button type="button" data-action="buy-megaphone" class="shrink-0 px-3 py-2 rounded-xl bg-white text-[#1D1D1F] hover:bg-slate-100 active:scale-95 text-xs font-bold transition shadow-sm">
@@ -938,7 +960,7 @@
         textEl.textContent = '전체 버튼을 눌러 동네 사자후를 확인해 보세요';
         ticker.classList.add('bg-slate-100/90', 'text-slate-500');
         ticker.classList.remove('bg-indigo-50', 'text-indigo-900', 'font-semibold', 'ring-1', 'ring-indigo-200');
-      }, 2000);
+      }, 5000);
     }
 
     function renderShoutModalList() {
@@ -1050,6 +1072,7 @@
         const baseColor = shop.pin_color || '#1D1D1F';
         const fill = suspected ? '#94A3B8' : (isSelected ? '#4F46E5' : baseColor);
         const isGachaOnly = (shop.machines || []).includes('가챠/캡슐') && !(shop.machines || []).includes('대형 크레인');
+        const pinIconType = shop.pin_icon || (isGachaOnly ? 'gacha' : 'bear');
         const isNewHighlight = Boolean(shop.has_new_prize && !suspected);
         const reviewCount = (shop.reviews || []).length;
         const scale = suspected ? 0.8 : getPinScale(reviewCount);
@@ -1097,13 +1120,31 @@
             ${bellyDiffText ? `<text x="18" y="25.2" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-size="4.6" font-weight="700" font-family="sans-serif">${bellyDiffText}</text>` : ''}
           </svg>`;
 
+        const clawSvg = `
+          <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="${borderColor}" stroke-width="${borderWidth}" stroke-linejoin="round" stroke-linecap="round">
+              <rect x="16.5" y="2.5" width="3" height="6" rx="1.5" fill="${fill}"/>
+              <path d="M15 13 L8 21 L12 28" stroke="${borderColor}" stroke-width="5.2"/>
+              <path d="M21 13 L28 21 L24 28" stroke="${borderColor}" stroke-width="5.2"/>
+              <circle cx="18" cy="11" r="4.2" fill="${fill}"/>
+              <circle cx="18" cy="24.5" r="6.2" fill="${fill}"/>
+            </g>
+            <rect x="16.5" y="2.5" width="3" height="6" rx="1.5" fill="${fill}"/>
+            <path d="M15 13 L8 21 L12 28" stroke="${fill}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 13 L28 21 L24 28" stroke="${fill}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="18" cy="11" r="4.2" fill="${fill}"/>
+            <circle cx="18" cy="11" r="1.4" fill="#FFFFFF"/>
+            <circle cx="18" cy="24.5" r="6.2" fill="${fill}"/>
+            ${bellyDiffText ? `<text x="18" y="24.8" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-size="4.6" font-weight="700" font-family="sans-serif">${bellyDiffText}</text>` : ''}
+          </svg>`;
+
         const el = document.createElement('div');
         el.className = `claw-pin ${isNewHighlight ? 'new-prize' : ''} ${isSelected ? 'selected' : ''}`;
         if (suspected) el.style.opacity = '0.8';
         el.innerHTML = `
           ${starCount > 0 ? `<span class="pin-star-badge" style="font-size:${starPx}px;white-space:nowrap;letter-spacing:${starCount === 5 ? '-1px' : '0px'};">${starText}</span>` : ''}
           <div style="width:${size}px;height:${size}px;position:relative;">
-            ${isGachaOnly ? gachaSvg : bearSvg}
+            ${pinIconType === 'gacha' ? gachaSvg : pinIconType === 'claw' ? clawSvg : bearSvg}
           </div>
         `;
         el.addEventListener('click', (ev) => {
@@ -1589,7 +1630,7 @@
         if (error) {
           return showToast('후기 삭제 실패: ' + (error.message || error.code || '오류'));
         }
-        showToast('후기가 삭제되었습니다.');
+        await loadUserSession(); showToast('후기가 삭제되었습니다. (-25 P / -15 EXP)');
         await loadShopsFromSupabase();
       });
     }
@@ -1602,7 +1643,7 @@
           return showToast('매장 삭제 실패 (12시간 이내 본인 제보만 삭제 가능)');
         }
         state.selectedShopId = null;
-        showToast('매장 제보가 삭제되었습니다.');
+        await loadUserSession(); showToast('매장 제보가 삭제되었습니다. (-500 P / -50 EXP)');
         await loadShopsFromSupabase();
       });
     }
@@ -2124,10 +2165,10 @@
         const duplicate = state.shops.find(s => {
           if (s.status === 'closed') return false;
           const dist = getDistanceMeters(s.lat, s.lng, state.pickedCoords.lat, state.pickedCoords.lng);
-          return dist < 10;
+          return dist < 5;
         });
         if (duplicate) {
-          showToast(`이미 반경 10m 이내에 '${duplicate.name}' 매장이 등록되어 있습니다.`);
+          showToast(`이미 반경 5m 이내에 '${duplicate.name}' 매장이 등록되어 있습니다.`);
           closeReportModal();
           selectShop(duplicate.id, true);
           return;
@@ -2150,6 +2191,7 @@
           hours,
           is_24h,
           pin_color,
+          pin_icon: (document.querySelector('input[name="pin_icon"]:checked') || {}).value || 'bear',
           machines: machines.length ? machines : ['일반 3발'],
           prizes,
           has_new_prize: true,
