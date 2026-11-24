@@ -150,7 +150,7 @@
     </button>
   </header>
 
-  <!-- Shout Bar: '전체' button + 2-second Live Shout Ticker -->
+  <!-- Shout Bar: '전체' button + 5-second Live Shout Ticker -->
   <div id="filter-scroll-bar" class="bg-white border-b border-slate-200 px-3 sm:px-4 py-2 flex items-center gap-2 shrink-0 z-10">
     <button id="open-shout-btn" type="button" class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shrink-0">
       전체
@@ -225,8 +225,8 @@
         </button>
       </div>
 
-      <!-- Mobile Bottom Sheet (for Shop Detail, Nearby List, OR Favorites — keeps map visible!) -->
-      <div id="mobile-sheet" class="hidden md:hidden absolute inset-x-0 bottom-0 z-[450] bg-white rounded-t-2xl shadow-2xl border-t border-slate-200 max-h-[36%] flex flex-col transition-all">
+      <!-- Mobile Bottom Sheet -->
+      <div id="mobile-sheet" class="hidden md:hidden absolute inset-x-0 bottom-0 z-[450] bg-white rounded-t-2xl shadow-2xl border-t border-slate-200 max-h-[54%] flex flex-col transition-all">
         <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 shrink-0 relative">
           <div class="w-10 h-1 rounded-full bg-slate-300 mx-auto absolute left-1/2 -translate-x-1/2 top-1.5"></div>
           <span id="mobile-sheet-title" class="text-xs font-bold text-indigo-600 mt-1">매장 상세 정보</span>
@@ -500,6 +500,7 @@
     const CLOSED_REPORT_THRESHOLD = 5;
     const MAX_VISIBLE_PINS = 60;
     const SHOP_DELETE_WINDOW_MS = 12 * 60 * 60 * 1000;
+    const REVIEW_COOLDOWN_MS = 30 * 60 * 1000;
     const FAV_SEEN_KEY = 'clawmap_fav_seen_v1';
 
     // Lv.1~2 identical, Lv.3+ requires 3x more EXP (1/3 speed)
@@ -544,6 +545,7 @@
     const overlaysById = new Map();
     let toastTimer = null;
     let shoutTickerTimer = null;
+    let shoutPollTimer = null;
     let isProgrammaticPan = false;
 
     function showToast(msg) {
@@ -1001,25 +1003,48 @@
         .order('created_at', { ascending: false })
         .limit(30);
       if (error) return;
-      state.shouts = (data || []).reverse();
+      const incoming = (data || []).reverse();
+      const prevLastId = state.shouts.length ? state.shouts[state.shouts.length - 1].id : null;
+      const nextLast = incoming.length ? incoming[incoming.length - 1] : null;
+      state.shouts = incoming;
+      if (prevLastId && nextLast && nextLast.id !== prevLastId) {
+        flashShoutTicker(nextLast);
+      }
       renderShoutModalList();
     }
 
+    function startShoutPolling() {
+      if (shoutPollTimer) return;
+      shoutPollTimer = setInterval(() => {
+        loadShouts();
+      }, 4000);
+    }
+
     function subscribeRealtimeShouts() {
-      sb.channel('public:shouts')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shouts' }, (payload) => {
-          const shout = payload.new;
-          if (!shout) return;
-          if (!state.shouts.some(s => s.id === shout.id)) {
-            state.shouts.push(shout);
-            if (state.shouts.length > 50) state.shouts.shift();
-          }
-          flashShoutTicker(shout);
-          if (!document.getElementById('shout-modal').classList.contains('hidden')) {
-            renderShoutModalList();
-          }
-        })
-        .subscribe();
+      startShoutPolling();
+      if (typeof window.WebSocket === 'undefined') return;
+      try {
+        sb.channel('public:shouts')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shouts' }, (payload) => {
+            const shout = payload.new;
+            if (!shout) return;
+            if (!state.shouts.some(s => s.id === shout.id)) {
+              state.shouts.push(shout);
+              if (state.shouts.length > 50) state.shouts.shift();
+            }
+            flashShoutTicker(shout);
+            if (!document.getElementById('shout-modal').classList.contains('hidden')) {
+              renderShoutModalList();
+            }
+          })
+          .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              startShoutPolling();
+            }
+          });
+      } catch (err) {
+        console.warn('Realtime WebSocket unavailable, using polling fallback.');
+      }
     }
 
     async function openShoutModal() {
@@ -1309,7 +1334,7 @@
                 </select>
               </div>
               <div class="flex gap-1.5">
-                <input name="text" type="text" placeholder="한줄 후기 또는 사진 등록" class="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-indigo-400" />
+                <input name="text" type="text" placeholder="한줄 후기 또는 사진 등록 (매장당 30분 쿨타임)" class="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-indigo-400" />
                 <label class="px-2 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 text-[11px] font-semibold shrink-0 cursor-pointer flex items-center gap-1 transition" title="사진 첨부">
                   <i data-lucide="camera" class="w-3.5 h-3.5"></i>
                   <input type="file" name="photo" accept="image/*" class="hidden" />
@@ -1636,7 +1661,8 @@
         if (error) {
           return showToast('후기 삭제 실패: ' + (error.message || error.code || '오류'));
         }
-        await loadUserSession(); showToast('후기가 삭제되었습니다. (-25 P / -15 EXP)');
+        await loadUserSession();
+        showToast('후기가 삭제되었습니다. (-25 P / -15 EXP)');
         await loadShopsFromSupabase();
       });
     }
@@ -1649,7 +1675,8 @@
           return showToast('매장 삭제 실패 (12시간 이내 본인 제보만 삭제 가능)');
         }
         state.selectedShopId = null;
-        await loadUserSession(); showToast('매장 제보가 삭제되었습니다. (-50 EXP)');
+        await loadUserSession();
+        showToast('매장 제보가 삭제되었습니다. (-50 EXP)');
         await loadShopsFromSupabase();
       });
     }
@@ -1832,6 +1859,18 @@
         return;
       }
       requireKakaoAuth('한줄 후기 등록은 카카오 로그인이 필요합니다.', async () => {
+        const shop = state.shops.find(s => s.id === shopId);
+        if (shop && Array.isArray(shop.reviews)) {
+          const myLatest = shop.reviews.find(r => r.user_id === state.user.id);
+          if (myLatest && myLatest.created_at) {
+            const elapsed = Date.now() - new Date(myLatest.created_at).getTime();
+            if (elapsed < REVIEW_COOLDOWN_MS) {
+              const remainMin = Math.max(1, Math.ceil((REVIEW_COOLDOWN_MS - elapsed) / 60000));
+              showToast(`같은 매장에는 후기 작성 후 30분 뒤에 다시 작성할 수 있습니다. (약 ${remainMin}분 남음)`);
+              return;
+            }
+          }
+        }
         const { error } = await sb.from('reviews').insert({
           shop_id: shopId,
           user_id: state.user.id,
@@ -1842,7 +1881,7 @@
         });
         if (error) {
           console.error('Review insert error:', error);
-          return showToast('후기 등록 실패: ' + (error.message || error.code || '오류'));
+          return showToast(error.message || '후기 등록 실패');
         }
         await loadUserSession();
         showToast('한줄 후기 등록 완료! (+25 P / +15 EXP)');
@@ -1935,36 +1974,6 @@
 
     function closeReportModal() {
       document.getElementById('report-modal').classList.add('hidden');
-    }
-
-    function initFilterDragScroll() {
-      const el = document.getElementById('filter-scroll-bar');
-      let isDown = false;
-      let startX = 0;
-      let scrollLeft = 0;
-      let dragged = false;
-
-      el.addEventListener('mousedown', (e) => {
-        isDown = true;
-        dragged = false;
-        startX = e.pageX - el.offsetLeft;
-        scrollLeft = el.scrollLeft;
-      });
-      window.addEventListener('mouseup', () => { isDown = false; });
-      el.addEventListener('mousemove', (e) => {
-        if (!isDown) return;
-        const x = e.pageX - el.offsetLeft;
-        const walk = x - startX;
-        if (Math.abs(walk) > 4) dragged = true;
-        if (dragged) el.scrollLeft = scrollLeft - walk;
-      });
-      el.addEventListener('click', (e) => {
-        if (dragged) {
-          e.stopPropagation();
-          e.preventDefault();
-          dragged = false;
-        }
-      }, true);
     }
 
     function initKakaoMap() {
@@ -2148,8 +2157,6 @@
         await loadShopsFromSupabase();
       });
 
-
-
       document.getElementById('open-report-btn').addEventListener('click', () => {
         requireKakaoAuth('신규 매장 제보는 카카오 로그인이 필요합니다.', () => openReportModal(false));
       });
@@ -2167,7 +2174,7 @@
         const name = document.getElementById('inp-name').value.trim();
         if (!name || !state.user) return;
 
-        // Duplicate prevention check (within 10m)
+        // Duplicate prevention check (within 5m)
         const duplicate = state.shops.find(s => {
           if (s.status === 'closed') return false;
           const dist = getDistanceMeters(s.lat, s.lng, state.pickedCoords.lat, state.pickedCoords.lng);
