@@ -800,7 +800,7 @@
           <div class="text-center space-y-3 py-2">
             <div class="text-3xl">🕹️</div>
             <p class="text-sm font-semibold text-slate-800">로그인하면 포인트·출석체크·사자후를 이용할 수 있어요</p>
-            <p class="text-xs text-slate-500">제보 +500P · 후기 +25P · 출석체크 +100P로 동네 사자후를 외쳐보세요.</p>
+            <p class="text-xs text-slate-500">제보 +500P(12시간 후 지급) · 후기 +25P · 출석 +100P로 사자후를 외쳐보세요.</p>
             <button type="button" data-action="modal-kakao-login" class="w-full py-2.5 px-4 rounded-xl bg-[#FEE500] hover:bg-[#FDD800] text-[#191919] text-sm font-bold transition">
               💬 카카오 로그인하기
             </button>
@@ -920,6 +920,12 @@
         return;
       }
       const uid = session.user.id;
+      try {
+        const { data: rewardRes } = await sb.rpc('claim_matured_shop_rewards');
+        if (rewardRes && rewardRes.awarded_points > 0) {
+          showToast(`등록 12시간 지난 제보 보상 +${rewardRes.awarded_points}P가 지급되었습니다!`);
+        }
+      } catch (e) {}
       const { data: profile } = await sb.from('profiles').select('nickname, exp, points, megaphone_count, last_checkin_date').eq('id', uid).maybeSingle();
       state.user = {
         id: uid,
@@ -1081,7 +1087,7 @@
         const { avgRating, avgDifficulty } = getAvgMetrics(shop);
         const starCount = avgRating === '-' ? 0 : Math.max(1, Math.min(5, Math.round(Number(avgRating))));
         const starPx = starCount === 5 ? 12 : 5.5;
-        const starText = starCount > 0 ? '★'.repeat(starCount) : '';
+        const starText = starCount === 5 ? '★' : (starCount > 0 ? '★'.repeat(starCount) : '');
         const bellyDiffText = avgDifficulty === '-' ? '' : Number(avgDifficulty).toFixed(1);
 
         const bearSvg = `
@@ -1142,7 +1148,7 @@
         el.className = `claw-pin ${isNewHighlight ? 'new-prize' : ''} ${isSelected ? 'selected' : ''}`;
         if (suspected) el.style.opacity = '0.8';
         el.innerHTML = `
-          ${starCount > 0 ? `<span class="pin-star-badge" style="font-size:${starPx}px;white-space:nowrap;letter-spacing:${starCount === 5 ? '-1px' : '0px'};">${starText}</span>` : ''}
+          ${starCount > 0 ? `<span class="pin-star-badge" style="font-size:${starPx}px;white-space:nowrap;">${starText}</span>` : ''}
           <div style="width:${size}px;height:${size}px;position:relative;">
             ${pinIconType === 'gacha' ? gachaSvg : pinIconType === 'claw' ? clawSvg : bearSvg}
           </div>
@@ -1643,7 +1649,7 @@
           return showToast('매장 삭제 실패 (12시간 이내 본인 제보만 삭제 가능)');
         }
         state.selectedShopId = null;
-        await loadUserSession(); showToast('매장 제보가 삭제되었습니다. (-500 P / -50 EXP)');
+        await loadUserSession(); showToast('매장 제보가 삭제되었습니다. (-50 EXP)');
         await loadShopsFromSupabase();
       });
     }
@@ -2205,7 +2211,7 @@
         await loadUserSession();
         closeReportModal();
         e.target.reset();
-        showToast(`'${name}' 매장이 등록되었습니다! (+500 P / +50 EXP)`);
+        showToast(`'${name}' 매장이 등록되었습니다! (+50 EXP · 12시간 후 +500P 지급)`);
         await loadShopsFromSupabase();
         if (data && data.id) selectShop(data.id, true);
       });
