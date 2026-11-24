@@ -47,13 +47,6 @@
     .rps-pop-anim {
       animation: rps-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
-    @keyframes roulette-free-spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .roulette-spinning {
-      animation: roulette-free-spin 0.45s linear infinite;
-    }
     @keyframes pulse-ring {
       0% { transform: scale(0.9); opacity: 0.75; }
       70% { transform: scale(2.1); opacity: 0; }
@@ -449,18 +442,18 @@
         <!-- Initial Pin Icon Picker (2 Options: 인형뽑기=곰돌이, 가챠=캡슐) -->
         <div>
           <span class="block text-xs font-semibold text-slate-700 mb-1.5">매장 유형 및 지도 아이콘</span>
-          <div id="pin-icon-picker" class="grid grid-cols-2 gap-2.5">
-            <label class="cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_icon" value="bear" checked class="sr-only" />
-              <svg width="22" height="22" viewBox="0 0 36 36" fill="none"><circle cx="10" cy="10" r="4.2" fill="#1D1D1F"/><circle cx="26" cy="10" r="4.2" fill="#1D1D1F"/><circle cx="18" cy="16.5" r="8.8" fill="#1D1D1F"/><ellipse cx="18" cy="27" rx="7.2" ry="5.8" fill="#1D1D1F"/><circle cx="15" cy="15.2" r="1.15" fill="#FFF"/><circle cx="21" cy="15.2" r="1.15" fill="#FFF"/></svg>
-              <span class="text-xs font-bold text-slate-800">인형뽑기</span>
-            </label>
-            <label class="cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-              <input type="radio" name="pin_icon" value="gacha" class="sr-only" />
-              <svg width="22" height="22" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="12" fill="#1D1D1F"/><path d="M6 18H30" stroke="#FFF" stroke-width="2.2"/><circle cx="18" cy="18" r="3.4" fill="#FFF"/></svg>
-              <span class="text-xs font-bold text-slate-800">가챠</span>
-            </label>
-          </div>
+        <!-- Pin Icon Picker (2 Options: 인형뽑기=곰돌이, 가챠=캡슐) -->
+        <div id="pin-icon-picker" class="grid grid-cols-2 gap-2.5">
+          <label class="cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+            <input type="radio" name="pin_icon" value="bear" checked class="sr-only" />
+            <svg width="22" height="22" viewBox="0 0 36 36" fill="none"><circle cx="10" cy="10" r="4.2" fill="#1D1D1F"/><circle cx="26" cy="10" r="4.2" fill="#1D1D1F"/><circle cx="18" cy="16.5" r="8.8" fill="#1D1D1F"/><ellipse cx="18" cy="27" rx="7.2" ry="5.8" fill="#1D1D1F"/><circle cx="15" cy="15.2" r="1.15" fill="#FFF"/><circle cx="21" cy="15.2" r="1.15" fill="#FFF"/></svg>
+            <span class="text-xs font-bold text-slate-800">인형뽑기</span>
+          </label>
+          <label class="cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+            <input type="radio" name="pin_icon" value="gacha" class="sr-only" />
+            <svg width="22" height="22" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="12" fill="#1D1D1F"/><path d="M6 18H30" stroke="#FFF" stroke-width="2.2"/><circle cx="18" cy="18" r="3.4" fill="#FFF"/></svg>
+            <span class="text-xs font-bold text-slate-800">가챠</span>
+          </label>
         </div>
 
         <div>
@@ -660,8 +653,8 @@
       });
 
       const wheelStyle = isContinuousSpin
-        ? ''
-        : `transform: rotate(${rotationDeg}deg); transition: transform 2.2s cubic-bezier(0.15, 0.85, 0.2, 1);`;
+        ? `transform: rotate(${rotationDeg}deg); transition: none;`
+        : `transform: rotate(${rotationDeg}deg); transition: transform 2.6s cubic-bezier(0.12, 0.85, 0.22, 1);`;
 
       return `
         <div class="relative w-[228px] h-[228px] mx-auto flex items-center justify-center select-none">
@@ -672,7 +665,7 @@
             </svg>
           </div>
           <!-- Spinning Wheel -->
-          <div id="roulette-wheel-el" style="${wheelStyle}" class="w-[220px] h-[220px] rounded-full shadow-lg border-4 border-slate-900 overflow-hidden bg-slate-900 ${isContinuousSpin ? 'roulette-spinning' : ''}">
+          <div id="roulette-wheel-el" style="${wheelStyle}" class="w-[220px] h-[220px] rounded-full shadow-lg border-4 border-slate-900 overflow-hidden bg-slate-900">
             <svg width="220" height="220" viewBox="0 0 220 220">
               ${paths.join('')}
               ${labels.join('')}
@@ -684,202 +677,31 @@
       `;
     }
 
-    function getRouletteTargetAngle(sectorIndex) {
-      const totalWeight = ROULETTE_SECTORS.reduce((acc, s) => acc + s.weight, 0);
-      let startFromTop = 0;
-      for (let i = 0; i < sectorIndex; i++) {
-        startFromTop += (ROULETTE_SECTORS[i].weight / totalWeight) * 360;
-      }
-      const sweep = (ROULETTE_SECTORS[sectorIndex].weight / totalWeight) * 360;
-      const jitter = (Math.random() - 0.5) * (sweep * 0.55);
-      const centerFromTop = startFromTop + sweep / 2 + jitter;
-      return (360 - (centerFromTop % 360)) % 360;
-    }
+    let rouletteSpinRaf = null;
+    let rouletteLastFrameTime = 0;
 
-    let kakaoMap = null;
-    let userOverlay = null;
-    let pickerMarker = null;
-    const overlaysById = new Map();
-    let toastTimer = null;
-    let shoutTickerTimer = null;
-    let shoutPollTimer = null;
-    let isProgrammaticPan = false;
-
-    function showToast(msg) {
-      const el = document.getElementById('toast');
-      el.textContent = msg;
-      el.classList.remove('hidden');
-      if (toastTimer) clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => el.classList.add('hidden'), 2800);
-    }
-
-    function escapeHtml(str) {
-      return String(str || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
-    function formatDateTime(isoStr) {
-      if (!isoStr) return '';
-      const d = new Date(isoStr);
-      if (Number.isNaN(d.getTime())) return String(isoStr).slice(0, 16);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mm = String(d.getMinutes()).padStart(2, '0');
-      return `${y}.${m}.${day} ${hh}:${mm}`;
-    }
-
-    function formatDateOnly(isoStr) {
-      if (!isoStr) return '';
-      const d = new Date(isoStr);
-      if (Number.isNaN(d.getTime())) return String(isoStr).slice(0, 10);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}.${m}.${day}`;
-    }
-
-    function isNewWithinMonth(shop) {
-      if (!shop || !shop.created_at) return false;
-      const t = new Date(shop.created_at).getTime();
-      if (Number.isNaN(t)) return false;
-      return (Date.now() - t) <= NEW_SHOP_FLAG_MS;
-    }
-
-    function getLevelInfo(exp) {
-      const val = Math.max(0, Number(exp || 0));
-      let current = LEVEL_TABLE[0];
-      let next = null;
-      for (let i = 0; i < LEVEL_TABLE.length; i++) {
-        if (val >= LEVEL_TABLE[i].minExp) {
-          current = LEVEL_TABLE[i];
-          next = LEVEL_TABLE[i + 1] || null;
+    function startRouletteContinuousSpin() {
+      stopRouletteContinuousSpin();
+      rouletteLastFrameTime = performance.now();
+      const tick = (now) => {
+        if (state.rouletteState.phase !== 'spinning') return;
+        const dt = (now - rouletteLastFrameTime) / 1000;
+        rouletteLastFrameTime = now;
+        state.rouletteState.rotation = (state.rouletteState.rotation + 780 * dt) % 360000;
+        const wheelEl = document.getElementById('roulette-wheel-el');
+        if (wheelEl) {
+          wheelEl.style.transition = 'none';
+          wheelEl.style.transform = `rotate(${state.rouletteState.rotation}deg)`;
         }
-      }
-      return { ...current, next };
-    }
-
-    function getDistanceMeters(lat1, lng1, lat2, lng2) {
-      const R = 6371000;
-      const toRad = d => (d * Math.PI) / 180;
-      const dLat = toRad(lat2 - lat1);
-      const dLng = toRad(lng2 - lng1);
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-
-    function formatDistance(shop) {
-      if (!state.userLocation) return '';
-      const m = getDistanceMeters(state.userLocation.lat, state.userLocation.lng, shop.lat, shop.lng);
-      return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
-    }
-
-    function getPinScale(reviewCount) {
-      const count = Math.max(0, Number(reviewCount || 0));
-      if (count === 0) return 0.8;
-      let scale = 1.0;
-      if (count <= 100) {
-        scale += Math.floor(count / 10) * 0.01;
-      } else if (count <= 1000) {
-        scale += 10 * 0.01 + Math.floor((count - 100) / 100) * 0.01;
-      } else {
-        scale += 10 * 0.01 + 9 * 0.01 + Math.floor((count - 1000) / 1000) * 0.01;
-      }
-      return Math.min(1.3, Number(scale.toFixed(2)));
-    }
-
-    function isSuspectedClosed(shop) {
-      return shop.status === 'suspected_closed' || (shop.report_count || 0) >= CLOSED_REPORT_THRESHOLD;
-    }
-
-    function getDeleteRemainingMs(shop) {
-      if (!state.user || !shop || shop.created_by !== state.user.id || !shop.created_at) return 0;
-      const elapsed = Date.now() - new Date(shop.created_at).getTime();
-      return Math.max(0, SHOP_DELETE_WINDOW_MS - elapsed);
-    }
-
-    function formatRemainingTime(ms) {
-      if (ms <= 0) return '만료됨';
-      const totalSec = Math.floor(ms / 1000);
-      const h = Math.floor(totalSec / 3600);
-      const m = Math.floor((totalSec % 3600) / 60);
-      const s = totalSec % 60;
-      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    }
-
-    function getAvgMetrics(shop) {
-      const reviews = shop.reviews || [];
-      if (reviews.length === 0) return { avgRating: '-', avgDifficulty: '-' };
-      const sumR = reviews.reduce((a, r) => a + Number(r.rating || 0), 0);
-      const sumD = reviews.reduce((a, r) => a + Number(r.difficulty || 0), 0);
-      return {
-        avgRating: (sumR / reviews.length).toFixed(1),
-        avgDifficulty: (sumD / reviews.length).toFixed(1)
+        rouletteSpinRaf = requestAnimationFrame(tick);
       };
+      rouletteSpinRaf = requestAnimationFrame(tick);
     }
 
-    function getMapCenterObj() {
-      if (!kakaoMap) return DEFAULT_CENTER;
-      const c = kakaoMap.getCenter();
-      return { lat: c.getLat(), lng: c.getLng() };
-    }
-
-    function isShopInViewport(shop) {
-      if (!kakaoMap || !window.kakao || !window.kakao.maps) return true;
-      const bounds = kakaoMap.getBounds();
-      if (!bounds) return true;
-      return bounds.contain(new window.kakao.maps.LatLng(shop.lat, shop.lng));
-    }
-
-    function getFilteredShops(onlyFavorites = false) {
-      const q = state.searchQuery.trim().toLowerCase();
-      return state.shops.filter(shop => {
-        if (onlyFavorites) {
-          if (!state.favorites.has(shop.id)) return false;
-        } else {
-          if (!isShopInViewport(shop)) return false;
-        }
-        if (state.activeFilter === '24h' && !shop.is_24h) return false;
-        if (state.activeFilter === 'newPrize' && !shop.has_new_prize) return false;
-        if (state.activeFilter === 'large' && !(shop.machines || []).includes('대형 크레인')) return false;
-        if (state.activeFilter === 'gacha' && !(shop.machines || []).includes('가챠/캡슐')) return false;
-        if (q) {
-          const hay = [shop.name, shop.area, shop.address, ...(shop.prizes || []), ...(shop.machines || [])].join(' ').toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
-        return true;
-      }).sort((a, b) => {
-        if (state.sortBy === 'rating') {
-          const ra = getAvgMetrics(a).avgRating;
-          const rb = getAvgMetrics(b).avgRating;
-          if (ra === '-' && rb === '-') return 0;
-          if (ra === '-') return 1;
-          if (rb === '-') return -1;
-          return state.sortDir === 'desc' ? Number(rb) - Number(ra) : Number(ra) - Number(rb);
-        }
-        if (state.sortBy === 'difficulty') {
-          const da = getAvgMetrics(a).avgDifficulty;
-          const db = getAvgMetrics(b).avgDifficulty;
-          if (da === '-' && db === '-') return 0;
-          if (da === '-') return 1;
-          if (db === '-') return -1;
-          return state.sortDir === 'asc' ? Number(da) - Number(db) : Number(db) - Number(da);
-        }
-        const ref = state.userLocation || getMapCenterObj();
-        return getDistanceMeters(ref.lat, ref.lng, a.lat, a.lng) - getDistanceMeters(ref.lat, ref.lng, b.lat, b.lng);
-      });
-    }
-
-    function getFavSeenMap() {
-      try {
-        return JSON.parse(localStorage.getItem(FAV_SEEN_KEY) || '{}');
-      } catch (e) {
-        return {};
+    function stopRouletteContinuousSpin() {
+      if (rouletteSpinRaf) {
+        cancelAnimationFrame(rouletteSpinRaf);
+        rouletteSpinRaf = null;
       }
     }
 
@@ -2847,17 +2669,29 @@
           state.rouletteState.pendingResult = data;
           state.rouletteState.lastResult = null;
           openRpsModal('roulette');
+          startRouletteContinuousSpin();
         } else if (act === 'stop-roulette') {
           if (state.rouletteState.phase !== 'spinning' || !state.rouletteState.pendingResult) return;
+          stopRouletteContinuousSpin();
           const data = state.rouletteState.pendingResult;
           state.rouletteState.phase = 'stopping';
 
+          const startAngle = state.rouletteState.rotation;
           const targetAngle = getRouletteTargetAngle(data.sector_index);
-          const currentMod = ((state.rouletteState.rotation % 360) + 360) % 360;
+          const currentMod = ((startAngle % 360) + 360) % 360;
           const delta = ((targetAngle - currentMod) + 360) % 360;
-          state.rouletteState.rotation += 360 * 3 + delta;
+          const finalAngle = startAngle + 360 * 3 + delta;
+          state.rouletteState.rotation = finalAngle;
 
           openRpsModal('roulette');
+          const wheelEl = document.getElementById('roulette-wheel-el');
+          if (wheelEl) {
+            wheelEl.style.transition = 'none';
+            wheelEl.style.transform = `rotate(${startAngle}deg)`;
+            void wheelEl.offsetWidth;
+            wheelEl.style.transition = 'transform 2.6s cubic-bezier(0.12, 0.85, 0.22, 1)';
+            wheelEl.style.transform = `rotate(${finalAngle}deg)`;
+          }
 
           setTimeout(() => {
             state.user.points = data.points;
@@ -2873,7 +2707,7 @@
             } else {
               showToast('😅 아쉽지만 꽝! 다음 기회에 도전해 보세요.');
             }
-          }, 2300);
+          }, 2650);
         } else if (act === 'play-rps') {
           const choice = btn.getAttribute('data-choice');
           if ((state.user.points || 0) < 300) {
