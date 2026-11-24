@@ -549,6 +549,12 @@
         phase: 'idle', // 'idle' | 'spinning' | 'stopping'
         pendingResult: null,
         lastResult: null
+      },
+      tenSecState: {
+        phase: 'idle', // 'idle' | 'running' | 'stopping'
+        startTime: 0,
+        elapsedMs: 0,
+        lastResult: null
       }
     };
 
@@ -880,6 +886,75 @@
       rouletteSpinRaf = requestAnimationFrame(step);
     }
 
+    let tenSecRaf = null;
+    let tenSecAutoStopping = false;
+
+    function formatTenSecText(ms) {
+      const clamped = Math.max(0, Math.round(ms / 10) * 10);
+      const secs = Math.floor(clamped / 1000);
+      const centis = Math.floor((clamped % 1000) / 10);
+      return `${String(secs).padStart(2, '0')}.${String(centis).padStart(2, '0')}`;
+    }
+
+    function stopTenSecTimerLoop() {
+      if (tenSecRaf) {
+        cancelAnimationFrame(tenSecRaf);
+        tenSecRaf = null;
+      }
+    }
+
+    async function finishTenSecRound(clientElapsedMs) {
+      if (state.tenSecState.phase !== 'running') return;
+      stopTenSecTimerLoop();
+      state.tenSecState.phase = 'stopping';
+      state.tenSecState.elapsedMs = clientElapsedMs;
+      openRpsModal('tensec');
+
+      const { data, error } = await sb.rpc('finish_ten_sec_game', {
+        p_client_elapsed_ms: Math.round(clientElapsedMs)
+      });
+      state.tenSecState.phase = 'idle';
+      tenSecAutoStopping = false;
+
+      if (error || !data || !data.success) {
+        openRpsModal('tensec');
+        showToast((data && data.message) || '정산 중 오류가 발생했습니다.');
+        return;
+      }
+
+      state.user.points = data.points;
+      state.tenSecState.elapsedMs = data.elapsed_ms;
+      state.tenSecState.lastResult = data;
+      openRpsModal('tensec');
+
+      if (data.payout > 0) {
+        showToast('정확히 10.00초 적중! +3,000P 대박 획득!');
+      } else {
+        showToast(`아쉽습니다! (${formatTenSecText(data.elapsed_ms)}초) 정확히 10.00초만 인정됩니다.`);
+      }
+    }
+
+    function startTenSecTimerLoop() {
+      stopTenSecTimerLoop();
+      tenSecAutoStopping = false;
+      const tick = (now) => {
+        if (state.tenSecState.phase !== 'running') return;
+        const elapsed = now - state.tenSecState.startTime;
+        state.tenSecState.elapsedMs = elapsed;
+        const displayEl = document.getElementById('tensec-timer-display');
+        if (displayEl) {
+          displayEl.textContent = formatTenSecText(elapsed);
+        }
+        if (elapsed >= 15000 && !tenSecAutoStopping) {
+          tenSecAutoStopping = true;
+          finishTenSecRound(15000);
+          return;
+        }
+        tenSecRaf = requestAnimationFrame(tick);
+      };
+      tenSecRaf = requestAnimationFrame(tick);
+    }
+
     function markFavoriteShopSeen(shopId) {
       try {
         const seen = getFavSeenMap();
@@ -1025,6 +1100,72 @@
               </div>
               <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
             </button>
+
+            <button type="button" data-action="open-game-detail" data-game="tensec" class="w-full text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/30 active:scale-[0.99] transition flex items-center justify-between gap-3 shadow-sm">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-2xl shrink-0">
+                  ⏱️
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-bold text-slate-900">10.00초 맞추기</span>
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">100P</span>
+                  </div>
+                  <p class="text-[11px] text-slate-500 truncate mt-0.5">딱 10.00초에 멈추면 3,000P!</p>
+                </div>
+              </div>
+              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+            </button>
+          </div>
+        `;
+      } else if (view === 'tensec') {
+        titleEl.textContent = '10.00초 맞추기';
+        iconEl.textContent = '⏱️';
+        backBtn.classList.remove('hidden');
+        const pts = state.user.points || 0;
+        const tState = state.tenSecState;
+        const res = tState.lastResult;
+        const timerStr = formatTenSecText(tState.elapsedMs);
+
+        const resultBanner = tState.phase === 'running'
+          ? '<span class="text-[11px] font-bold text-emerald-600 animate-pulse">10.00초에 정확히 멈춤 버튼을 누르세요!</span>'
+          : tState.phase === 'stopping'
+            ? '<span class="text-[11px] font-semibold text-slate-500">기록 확인 중...</span>'
+            : !res
+              ? '<span class="text-[11px] font-semibold text-slate-400">참가비 100P · 정확히 10.00초 적중 시 3,000P!</span>'
+              : res.payout > 0
+                ? `<span class="rps-pop-anim inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-xs font-extrabold shadow-sm">🎉 10.00초 완벽 적중! +3,000P</span>`
+                : `<span class="rps-pop-anim inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-bold">😢 실패 (${formatTenSecText(res.elapsed_ms)}초)</span>`;
+
+        const btnHtml = tState.phase === 'running'
+          ? `<button type="button" data-action="stop-tensec" class="w-full py-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-md active:scale-[0.98] text-base font-extrabold transition">⏹ 멈춤 (10.00초 도전!)</button>`
+          : tState.phase === 'stopping'
+            ? `<button type="button" disabled class="w-full py-3.5 rounded-xl bg-slate-300 text-slate-500 cursor-not-allowed text-sm font-extrabold transition">기록 확인 중...</button>`
+            : `<button type="button" data-action="start-tensec" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-md active:scale-[0.98] text-sm font-extrabold transition">⏱️ 시작하기 (100P)</button>`;
+
+        body.innerHTML = `
+          <div class="flex items-center justify-between bg-emerald-50/80 border border-emerald-200/80 rounded-xl px-3.5 py-2.5">
+            <span class="text-xs font-semibold text-emerald-900">현재 보유 포인트</span>
+            <span class="text-sm font-extrabold text-slate-900">${pts.toLocaleString()} P</span>
+          </div>
+
+          <div class="rounded-2xl bg-slate-900 text-white py-6 px-4 text-center shadow-inner border border-slate-800 space-y-1.5">
+            <div class="text-[11px] font-semibold text-slate-400 tracking-wider uppercase">TARGET : 10.00 SEC</div>
+            <div id="tensec-timer-display" class="font-mono text-5xl font-extrabold tracking-tight tabular-nums ${res && res.payout > 0 && tState.phase === 'idle' ? 'text-amber-300' : 'text-white'}">
+              ${timerStr}
+            </div>
+            <div class="text-[11px] text-slate-400">단위: 초 (0.01초 정밀 측정)</div>
+          </div>
+
+          <div class="text-center min-h-[26px] flex items-center justify-center">
+            ${resultBanner}
+          </div>
+
+          ${btnHtml}
+
+          <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-[11px] text-slate-600 flex items-center justify-between">
+            <span>🎯 당첨 조건: <b>정확히 10.00초</b></span>
+            <span class="font-extrabold text-amber-600">성공 시 +3,000P (30배)</span>
           </div>
         `;
       } else if (view === 'roulette') {
@@ -1129,6 +1270,10 @@
     }
 
     function closeRpsModal() {
+      if (state.tenSecState.phase === 'running') {
+        stopTenSecTimer();
+        state.tenSecState.phase = 'idle';
+      }
       document.getElementById('rps-modal').classList.add('hidden');
     }
 
@@ -2831,6 +2976,24 @@
         } else if (act === 'open-game-detail') {
           const gameId = btn.getAttribute('data-game') || 'rps';
           openRpsModal(gameId);
+        } else if (act === 'start-tensec') {
+          if (state.tenSecState.phase !== 'idle') return;
+          if ((state.user.points || 0) < 300) {
+            return showToast('포인트가 부족합니다. (300P 필요)');
+          }
+          const { data, error } = await sb.rpc('start_ten_sec_game');
+          if (error) return showToast('게임 시작 오류: ' + (error.message || '오류'));
+          if (!data || !data.success) return showToast((data && data.message) || '게임을 시작할 수 없습니다.');
+
+          state.user.points = data.points;
+          state.tenSecState.phase = 'running';
+          state.tenSecState.startTime = performance.now();
+          state.tenSecState.elapsedMs = 0;
+          state.tenSecState.lastResult = null;
+          openRpsModal('tensec');
+          startTenSecTimer();
+        } else if (act === 'stop-tensec') {
+          await finishTenSecChallenge();
         } else if (act === 'spin-roulette') {
           if (state.rouletteState.phase !== 'idle') return;
           if ((state.user.points || 0) < 300) {
@@ -2891,6 +3054,26 @@
           } else {
             showToast('아쉽지만 패배했습니다. (-300P)');
           }
+        } else if (act === 'start-tensec') {
+          if (state.tenSecState.phase !== 'idle') return;
+          if ((state.user.points || 0) < 100) {
+            return showToast('포인트가 부족합니다. (100P 필요)');
+          }
+          const { data, error } = await sb.rpc('start_ten_sec_game');
+          if (error) return showToast('게임 시작 오류: ' + (error.message || '오류'));
+          if (!data || !data.success) return showToast((data && data.message) || '게임을 시작할 수 없습니다.');
+
+          state.user.points = data.points;
+          state.tenSecState.phase = 'running';
+          state.tenSecState.startTime = performance.now();
+          state.tenSecState.elapsedMs = 0;
+          state.tenSecState.lastResult = null;
+          openRpsModal('tensec');
+          startTenSecTimerLoop();
+        } else if (act === 'stop-tensec') {
+          if (state.tenSecState.phase !== 'running') return;
+          const elapsed = performance.now() - state.tenSecState.startTime;
+          await finishTenSecRound(elapsed);
         }
       });
 
