@@ -571,10 +571,14 @@
 
     let kakaoMap = null;
     let kakaoGeocoder = null;
+    let kakaoPlaces = null;
     let userOverlay = null;
     let pickerMarker = null;
     const overlaysById = new Map();
     const resolvedAddressCache = new Map();
+    const searchRegionCache = new Map();
+    let activeSearchRegionCenter = null;
+    let searchRegionTimer = null;
     let toastTimer = null;
     let shoutPollTimer = null;
     let isProgrammaticPan = false;
@@ -736,7 +740,11 @@
             ...reviewPrizes,
             ...(shop.machines || [])
           ].join(' ').toLowerCase();
-          if (!hay.includes(q)) return false;
+          const textMatched = hay.includes(q);
+          const nearSearchedRegion = activeSearchRegionCenter
+            ? getDistanceMeters(activeSearchRegionCenter.lat, activeSearchRegionCenter.lng, shop.lat, shop.lng) <= 2500
+            : false;
+          if (!textMatched && !nearSearchedRegion) return false;
         }
         return true;
       }).sort((a, b) => {
@@ -2379,44 +2387,117 @@
       }
     }
 
+    function updateResolvedAddressDom(shopId, text) {
+      document.querySelectorAll(`[data-resolved-address="${shopId}"]`).forEach(el => {
+        el.textContent = `📍 ${text}`;
+      });
+    }
+
+    async function fallbackReverseGeocodeRoad(lat, lng) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&accept-language=ko&zoom=18&addressdetails=1`;
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!res.ok) return '';
+        const data = await res.json();
+        const a = (data && data.address) || {};
+        const city = a.city || a.province || '';
+        const gu = a.borough || a.county || a.city_district || '';
+        const dong = a.quarter || a.neighbourhood || a.suburb || a.town || a.village || '';
+        const road = a.road || a.pedestrian || a.footway || '';
+        const houseNo = a.house_number || '';
+        const roadPart = [road, houseNo].filter(Boolean).join(' ');
+        const parts = [city, gu, roadPart || dong, (roadPart && dong) ? `(${dong})` : ''].filter(Boolean);
+        return parts.join(' ');
+      } catch (e) {
+        return '';
+      }
+    }
+
     function resolveShopAddress(shop, onResolved) {
       if (!shop) return;
       if (resolvedAddressCache.has(shop.id)) {
-        if (onResolved) onResolved(resolvedAddressCache.get(shop.id));
+        const cached = resolvedAddressCache.get(shop.id);
+        updateResolvedAddressDom(shop.id, cached);
+        if (onResolved) onResolved(cached);
         return;
       }
-      const fallbackText = `${shop.lat.toFixed(5)}, ${shop.lng.toFixed(5)}`;
+      const fallbackCoordText = `${shop.lat.toFixed(5)}, ${shop.lng.toFixed(5)}`;
       if (!kakaoGeocoder && window.kakao && window.kakao.maps && window.kakao.maps.services) {
         kakaoGeocoder = new window.kakao.maps.services.Geocoder();
       }
+      const finishWithFallback = async () => {
+        const roadAddr = await fallbackReverseGeocodeRoad(shop.lat, shop.lng);
+        const finalAddr = roadAddr || fallbackCoordText;
+        resolvedAddressCache.set(shop.id, finalAddr);
+        updateResolvedAddressDom(shop.id, finalAddr);
+        if (onResolved) onResolved(finalAddr);
+      };
+
       if (!kakaoGeocoder) {
-        if (onResolved) onResolved(shop.address || fallbackText);
+        finishWithFallback();
         return;
       }
       kakaoGeocoder.coord2Address(shop.lng, shop.lat, (result, status) => {
         if (status === window.kakao.maps.services.Status.OK && result && result[0]) {
           const road = result[0].road_address && result[0].road_address.address_name;
           const jibun = result[0].address && result[0].address.address_name;
-          const addr = road || jibun || shop.address || fallbackText;
-          resolvedAddressCache.set(shop.id, addr);
-        } else {
-          resolvedAddressCache.set(shop.id, shop.address || fallbackText);
+          const dongName = result[0].address && result[0].address.region_3depth_name;
+          // 도로명 주소 우선 표시 + 동 이름(예: 상인동)도 함께 포함해 지역 검색에 매칭
+          let addr = road || jibun || '';
+          if (road && dongName && !road.includes(dongName)) {
+            addr = `${road} (${dongName})`;
+          }
+          if (addr) {
+            resolvedAddressCache.set(shop.id, addr);
+            updateResolvedAddressDom(shop.id, addr);
+            if (onResolved) onResolved(addr);
+            return;
+          }
         }
-        const finalAddr = resolvedAddressCache.get(shop.id);
-        document.querySelectorAll(`[data-resolved-address="${shop.id}"]`).forEach(el => {
-          el.textContent = `📍 ${finalAddr}`;
+        finishWithFallback();
+      });
+    }
+
+    function lookupRegionCoordsByKeyword(keyword, callback) {
+      const key = keyword.trim().toLowerCase();
+      if (!key) {
+        callback(null);
+        return;
+      }
+      if (searchRegionCache.has(key)) {
+        callback(searchRegionCache.get(key));
+        return;
+      }
+      if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
+        callback(null);
+        return;
+      }
+      if (!kakaoGeocoder) kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+      if (!kakaoPlaces) kakaoPlaces = new window.kakao.maps.services.Places();
+
+      kakaoGeocoder.addressSearch(keyword, (res, status) => {
+        if (status === window.kakao.maps.services.Status.OK && res && res[0]) {
+          const coords = { lat: Number(res[0].y), lng: Number(res[0].x) };
+          searchRegionCache.set(key, coords);
+          callback(coords);
+          return;
+        }
+        kakaoPlaces.keywordSearch(keyword, (pRes, pStatus) => {
+          if (pStatus === window.kakao.maps.services.Status.OK && pRes && pRes[0]) {
+            const coords = { lat: Number(pRes[0].y), lng: Number(pRes[0].x) };
+            searchRegionCache.set(key, coords);
+            callback(coords);
+          } else {
+            searchRegionCache.set(key, null);
+            callback(null);
+          }
         });
-        if (onResolved) onResolved(finalAddr);
       });
     }
 
     let isPrefetchingAddresses = false;
     function prefetchAllShopAddresses() {
       if (isPrefetchingAddresses) return;
-      if (!kakaoGeocoder && window.kakao && window.kakao.maps && window.kakao.maps.services) {
-        kakaoGeocoder = new window.kakao.maps.services.Geocoder();
-      }
-      if (!kakaoGeocoder) return;
       const targets = state.shops.filter(s => s.status !== 'closed' && !resolvedAddressCache.has(s.id));
       if (targets.length === 0) return;
 
@@ -2430,7 +2511,7 @@
         }
         const shop = targets[idx++];
         resolveShopAddress(shop, () => {
-          setTimeout(next, 60);
+          setTimeout(next, 120);
         });
       };
       next();
@@ -2960,6 +3041,7 @@
         });
         if (window.kakao.maps.services) {
           kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+          kakaoPlaces = new window.kakao.maps.services.Places();
           prefetchAllShopAddresses();
         }
         window.kakao.maps.event.addListener(kakaoMap, 'click', (mouseEvent) => {
@@ -2995,100 +3077,54 @@
       const clearSearchBtn = document.getElementById('clear-search-btn');
       const handleSearchUpdate = () => {
         state.searchQuery = searchInput.value;
+        const q = state.searchQuery.trim();
         clearSearchBtn.classList.toggle('hidden', !state.searchQuery);
-        if (state.searchQuery.trim()) {
-          state.selectedShopId = null;
-          if (window.innerWidth < 768 && state.mobTab === 'map') {
-            state.mobTab = 'list';
-          }
-          const matches = getFilteredShops(false);
-          if (matches.length > 0 && kakaoMap && window.kakao && window.kakao.maps) {
-            isProgrammaticPan = true;
-            setTimeout(() => { isProgrammaticPan = false; }, 450);
-            kakaoMap.panTo(new window.kakao.maps.LatLng(matches[0].lat, matches[0].lng));
-          }
+        if (searchRegionTimer) clearTimeout(searchRegionTimer);
+
+        if (!q) {
+          activeSearchRegionCenter = null;
+          renderAll();
+          return;
+        }
+
+        state.selectedShopId = null;
+        if (window.innerWidth < 768 && state.mobTab === 'map') {
+          state.mobTab = 'list';
+        }
+        activeSearchRegionCenter = searchRegionCache.get(q.toLowerCase()) || null;
+        const immediateMatches = getFilteredShops(false);
+        if (immediateMatches.length > 0 && kakaoMap && window.kakao && window.kakao.maps) {
+          isProgrammaticPan = true;
+          setTimeout(() => { isProgrammaticPan = false; }, 450);
+          kakaoMap.panTo(new window.kakao.maps.LatLng(immediateMatches[0].lat, immediateMatches[0].lng));
         }
         renderAll();
+
+        searchRegionTimer = setTimeout(() => {
+          lookupRegionCoordsByKeyword(q, (coords) => {
+            if (state.searchQuery.trim() !== q) return;
+            activeSearchRegionCenter = coords;
+            const updatedMatches = getFilteredShops(false);
+            if (kakaoMap && window.kakao && window.kakao.maps) {
+              const panTarget = updatedMatches[0]
+                ? new window.kakao.maps.LatLng(updatedMatches[0].lat, updatedMatches[0].lng)
+                : (coords ? new window.kakao.maps.LatLng(coords.lat, coords.lng) : null);
+              if (panTarget) {
+                isProgrammaticPan = true;
+                setTimeout(() => { isProgrammaticPan = false; }, 450);
+                kakaoMap.panTo(panTarget);
+              }
+            }
+            renderAll();
+          });
+        }, 250);
       };
       searchInput.addEventListener('input', handleSearchUpdate);
-      clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; state.searchQuery = ''; clearSearchBtn.classList.add('hidden'); renderAll(); });
-
-      document.getElementById('open-shout-btn').addEventListener('click', openShoutModal);
-      document.getElementById('shout-ticker').addEventListener('click', openShoutModal);
-      document.getElementById('close-shout-modal').addEventListener('click', closeShoutModal);
-      document.getElementById('shout-modal').addEventListener('click', (e) => {
-        if (e.target.id === 'shout-modal') closeShoutModal();
-      });
-      document.getElementById('shout-list-body').addEventListener('click', (e) => {
-        const delBtn = e.target.closest('[data-action="delete-shout"]');
-        if (delBtn) {
-          const shoutId = delBtn.getAttribute('data-shout-id');
-          requireKakaoAuth('사자후 삭제는 카카오 로그인이 필요합니다.', () => deleteOwnShout(shoutId));
-          return;
-        }
-        const repBtn = e.target.closest('[data-action="report-shout"]');
-        if (repBtn) {
-          const shoutId = repBtn.getAttribute('data-shout-id');
-          requireKakaoAuth('사자후 신고는 카카오 로그인이 필요합니다.', () => openShoutReportModal(shoutId));
-          return;
-        }
-        const btn = e.target.closest('[data-action="toggle-shout-like"]');
-        if (!btn) return;
-        const shoutId = btn.getAttribute('data-shout-id');
-        requireKakaoAuth('사자후 공감은 카카오 로그인이 필요합니다.', () => toggleShoutLike(shoutId));
-      });
-      document.getElementById('shout-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const input = document.getElementById('inp-shout-msg');
-        const msg = input.value.trim();
-        if (!msg) return showToast('사자후 내용을 입력해 주세요.');
-        requireKakaoAuth('사자후 작성은 카카오 로그인이 필요합니다.', async () => {
-          if ((state.user.megaphone_count || 0) < 1) {
-            showToast('보유한 사자후가 없습니다. 내 프로필에서 100P로 구매해 주세요!');
-            return;
-          }
-          const { data, error } = await sb.rpc('send_shout', { p_message: msg });
-          if (error) return showToast('사자후 발송 실패: ' + (error.message || '오류'));
-          if (!data || !data.success) return showToast((data && data.message) || '사자후 발송에 실패했습니다.');
-          input.value = '';
-          state.user.megaphone_count = data.megaphone_count;
-          updateAuthUI();
-          await loadShouts();
-          const latest = state.shouts[state.shouts.length - 1];
-          if (latest) flashShoutTicker(latest);
-          showToast('사자후가 동네 전체에 전송되었습니다!');
-        });
-      });
-
-      document.getElementById('desk-tab-list').addEventListener('click', () => { state.deskTab = 'list'; state.selectedShopId = null; renderPanels(); });
-      document.getElementById('desk-tab-fav').addEventListener('click', () => { state.deskTab = 'fav'; state.selectedShopId = null; renderPanels(); });
-
-      document.getElementById('mob-tab-map').addEventListener('click', () => {
-        state.mobTab = 'map';
-        state.selectedShopId = null;
-        state.sheetExpanded = false;
-        renderPanels();
-      });
-      document.getElementById('mob-tab-list').addEventListener('click', () => {
-        state.mobTab = 'list';
-        state.selectedShopId = null;
-        state.sheetExpanded = false;
-        renderPanels();
-      });
-      document.getElementById('mob-tab-fav').addEventListener('click', () => {
-        state.mobTab = 'fav';
-        state.selectedShopId = null;
-        state.sheetExpanded = false;
-        renderPanels();
-      });
-      document.getElementById('toggle-sheet-expand').addEventListener('click', () => {
-        state.sheetExpanded = !state.sheetExpanded;
-        renderPanels();
-      });
-      document.getElementById('close-mobile-sheet').addEventListener('click', () => {
-        state.selectedShopId = null;
-        state.mobTab = 'map';
-        state.sheetExpanded = false;
+      clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        state.searchQuery = '';
+        activeSearchRegionCenter = null;
+        clearSearchBtn.classList.add('hidden');
         renderAll();
       });
 
