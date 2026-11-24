@@ -1271,7 +1271,7 @@
 
     function closeRpsModal() {
       if (state.tenSecState.phase === 'running') {
-        stopTenSecTimer();
+        stopTenSecTimerLoop();
         state.tenSecState.phase = 'idle';
       }
       document.getElementById('rps-modal').classList.add('hidden');
@@ -2976,24 +2976,6 @@
         } else if (act === 'open-game-detail') {
           const gameId = btn.getAttribute('data-game') || 'rps';
           openRpsModal(gameId);
-        } else if (act === 'start-tensec') {
-          if (state.tenSecState.phase !== 'idle') return;
-          if ((state.user.points || 0) < 300) {
-            return showToast('포인트가 부족합니다. (300P 필요)');
-          }
-          const { data, error } = await sb.rpc('start_ten_sec_game');
-          if (error) return showToast('게임 시작 오류: ' + (error.message || '오류'));
-          if (!data || !data.success) return showToast((data && data.message) || '게임을 시작할 수 없습니다.');
-
-          state.user.points = data.points;
-          state.tenSecState.phase = 'running';
-          state.tenSecState.startTime = performance.now();
-          state.tenSecState.elapsedMs = 0;
-          state.tenSecState.lastResult = null;
-          openRpsModal('tensec');
-          startTenSecTimer();
-        } else if (act === 'stop-tensec') {
-          await finishTenSecChallenge();
         } else if (act === 'spin-roulette') {
           if (state.rouletteState.phase !== 'idle') return;
           if ((state.user.points || 0) < 300) {
