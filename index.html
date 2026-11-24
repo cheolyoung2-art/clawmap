@@ -1517,15 +1517,12 @@
                 </select>
               </div>
               <div class="flex gap-1.5">
-                <input name="text" type="text" placeholder="한줄 후기 또는 사진 등록 (매장당 30분 쿨타임)" class="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-indigo-400" />
+                <input name="text" type="text" placeholder="한줄 후기 + #경품태그 (예: 집게 힘 좋아요 #치이카와 #산리오)" class="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-indigo-400" />
                 <label class="px-2 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 text-[11px] font-semibold shrink-0 cursor-pointer flex items-center gap-1 transition" title="사진 첨부">
                   <i data-lucide="camera" class="w-3.5 h-3.5"></i>
                   <input type="file" name="photo" accept="image/*" class="hidden" />
                 </label>
                 <button type="submit" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition">등록</button>
-              </div>
-              <div>
-                <input name="prizes" type="text" maxlength="60" placeholder="목격 경품 태그 추가 (쉼표 구분, 예: 산리오, 치이카와)" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] outline-none focus:border-indigo-400" />
               </div>
               <div data-role="photo-preview" class="hidden items-center gap-2 pt-0.5">
                 <img src="" alt="첨부 미리보기" class="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
@@ -2097,11 +2094,11 @@
       const rating = Number(form.querySelector('[name="rating"]').value);
       const difficulty = Number(form.querySelector('[name="difficulty"]').value);
       const content = form.querySelector('[name="text"]').value.trim();
-      const rawPrizes = (form.querySelector('[name="prizes"]') && form.querySelector('[name="prizes"]').value.trim()) || '';
-      const prizes = rawPrizes ? rawPrizes.split(',').map(x => x.trim()).filter(Boolean).slice(0, 6) : [];
+      const hashtagMatches = content.match(/#([^\s#,]+)/g) || [];
+      const prizes = Array.from(new Set(hashtagMatches.map(tag => tag.replace(/^#/, '').trim()).filter(Boolean))).slice(0, 6);
       const photoUrl = form.dataset.photoData || null;
-      if (!content && !photoUrl && prizes.length === 0) {
-        showToast('후기 내용, 목격 경품 또는 사진을 입력해 주세요.');
+      if (!content && !photoUrl) {
+        showToast('후기 내용(#경품태그 포함) 또는 사진을 입력해 주세요.');
         return;
       }
       requireKakaoAuth('한줄 후기 등록은 카카오 로그인이 필요합니다.', async () => {
