@@ -1770,6 +1770,7 @@
       }));
       computeFavoriteAlarms();
       renderAll();
+      prefetchAllShopAddresses();
     }
 
     function renderMarkers() {
@@ -1811,7 +1812,7 @@
         const starText = starCount === 5 ? '★' : (starCount > 0 ? '★'.repeat(starCount) : '');
         const bellyDiffText = avgDifficulty === '-' ? '' : Number(avgDifficulty).toFixed(1);
         const isFreshMonth = isNewWithinMonth(shop);
-        const fireworkSvg = `<svg width="11" height="11" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="8" r="2.1" fill="#F59E0B"/><path d="M8 1.5V4.2M8 11.8V14.5M1.5 8H4.2M11.8 8H14.5M3.4 3.4L5.3 5.3M10.7 10.7L12.6 12.6M12.6 3.4L10.7 5.3M5.3 10.7L3.4 12.6" stroke="#EF4444" stroke-width="1.6" stroke-linecap="round"/><circle cx="3.4" cy="3.4" r="1.1" fill="#EC4899"/><circle cx="12.6" cy="3.4" r="1.1" fill="#6366F1"/><circle cx="12.6" cy="12.6" r="1.1" fill="#10B981"/><circle cx="3.4" cy="12.6" r="1.1" fill="#F59E0B"/></svg>`;
+        const fireworkSvg = `<svg width="13.5" height="13.5" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;"><circle cx="8" cy="8" r="2.1" fill="#F59E0B"/><path d="M8 1.5V4.2M8 11.8V14.5M1.5 8H4.2M11.8 8H14.5M3.4 3.4L5.3 5.3M10.7 10.7L12.6 12.6M12.6 3.4L10.7 5.3M5.3 10.7L3.4 12.6" stroke="#EF4444" stroke-width="1.6" stroke-linecap="round"/><circle cx="3.4" cy="3.4" r="1.1" fill="#EC4899"/><circle cx="12.6" cy="3.4" r="1.1" fill="#6366F1"/><circle cx="12.6" cy="12.6" r="1.1" fill="#10B981"/><circle cx="3.4" cy="12.6" r="1.1" fill="#F59E0B"/></svg>`;
 
         const bearSvg = `
           <svg width="${size}" height="${size}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -2363,9 +2364,6 @@
         markFavoriteShopSeen(shopId);
       }
       const shop = state.shops.find(s => s.id === shopId);
-      if (shop) {
-        resolveShopAddress(shop);
-      }
       if (shop && panMap && kakaoMap) {
         if (window.innerWidth < 768) state.mobTab = 'map';
         renderAll();
@@ -2376,20 +2374,23 @@
       } else {
         renderAll();
       }
+      if (shop) {
+        resolveShopAddress(shop);
+      }
     }
 
-    function resolveShopAddress(shop) {
+    function resolveShopAddress(shop, onResolved) {
       if (!shop) return;
-      if (resolvedAddressCache.has(shop.id)) return;
+      if (resolvedAddressCache.has(shop.id)) {
+        if (onResolved) onResolved(resolvedAddressCache.get(shop.id));
+        return;
+      }
       const fallbackText = `${shop.lat.toFixed(5)}, ${shop.lng.toFixed(5)}`;
       if (!kakaoGeocoder && window.kakao && window.kakao.maps && window.kakao.maps.services) {
         kakaoGeocoder = new window.kakao.maps.services.Geocoder();
       }
       if (!kakaoGeocoder) {
-        resolvedAddressCache.set(shop.id, shop.address || fallbackText);
-        document.querySelectorAll(`[data-resolved-address="${shop.id}"]`).forEach(el => {
-          el.textContent = `📍 ${shop.address || fallbackText}`;
-        });
+        if (onResolved) onResolved(shop.address || fallbackText);
         return;
       }
       kakaoGeocoder.coord2Address(shop.lng, shop.lat, (result, status) => {
@@ -2405,7 +2406,34 @@
         document.querySelectorAll(`[data-resolved-address="${shop.id}"]`).forEach(el => {
           el.textContent = `📍 ${finalAddr}`;
         });
+        if (onResolved) onResolved(finalAddr);
       });
+    }
+
+    let isPrefetchingAddresses = false;
+    function prefetchAllShopAddresses() {
+      if (isPrefetchingAddresses) return;
+      if (!kakaoGeocoder && window.kakao && window.kakao.maps && window.kakao.maps.services) {
+        kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+      }
+      if (!kakaoGeocoder) return;
+      const targets = state.shops.filter(s => s.status !== 'closed' && !resolvedAddressCache.has(s.id));
+      if (targets.length === 0) return;
+
+      isPrefetchingAddresses = true;
+      let idx = 0;
+      const next = () => {
+        if (idx >= targets.length) {
+          isPrefetchingAddresses = false;
+          if (state.searchQuery.trim()) renderAll();
+          return;
+        }
+        const shop = targets[idx++];
+        resolveShopAddress(shop, () => {
+          setTimeout(next, 60);
+        });
+      };
+      next();
     }
 
     function copyTextToClipboard(text) {
@@ -2932,6 +2960,7 @@
         });
         if (window.kakao.maps.services) {
           kakaoGeocoder = new window.kakao.maps.services.Geocoder();
+          prefetchAllShopAddresses();
         }
         window.kakao.maps.event.addListener(kakaoMap, 'click', (mouseEvent) => {
           if (!state.pickLocationMode) return;
