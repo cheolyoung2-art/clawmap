@@ -3128,6 +3128,79 @@
         renderAll();
       });
 
+      document.getElementById('open-shout-btn').addEventListener('click', openShoutModal);
+      document.getElementById('shout-ticker').addEventListener('click', openShoutModal);
+      document.getElementById('close-shout-modal').addEventListener('click', closeShoutModal);
+      document.getElementById('shout-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'shout-modal') closeShoutModal();
+      });
+      document.getElementById('shout-list-body').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const act = btn.getAttribute('data-action');
+        const shoutId = btn.getAttribute('data-shout-id');
+        if (!shoutId) return;
+        if (act === 'toggle-shout-like') {
+          requireKakaoAuth('사자후 공감은 카카오 로그인이 필요합니다.', () => toggleShoutLike(shoutId));
+        } else if (act === 'delete-shout') {
+          requireKakaoAuth('사자후 삭제는 카카오 로그인이 필요합니다.', () => deleteOwnShout(shoutId));
+        } else if (act === 'report-shout') {
+          requireKakaoAuth('사자후 신고는 카카오 로그인이 필요합니다.', () => openShoutReportModal(shoutId));
+        }
+      });
+      document.getElementById('shout-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('inp-shout-msg');
+        const msg = input.value.trim();
+        if (!msg) return showToast('사자후 내용을 입력해 주세요.');
+        requireKakaoAuth('사자후 작성은 카카오 로그인이 필요합니다.', async () => {
+          if ((state.user.megaphone_count || 0) < 1) {
+            showToast('보유한 사자후가 없습니다. 내 프로필에서 100P로 구매해 주세요!');
+            return;
+          }
+          const { data, error } = await sb.rpc('send_shout', { p_message: msg });
+          if (error) return showToast('사자후 발송 실패: ' + (error.message || '오류'));
+          if (!data || !data.success) return showToast((data && data.message) || '사자후 발송에 실패했습니다.');
+          input.value = '';
+          state.user.megaphone_count = data.megaphone_count;
+          updateAuthUI();
+          await loadShouts();
+          showToast('사자후가 동네 전체에 전송되었습니다!');
+        });
+      });
+
+      document.getElementById('desk-tab-list').addEventListener('click', () => { state.deskTab = 'list'; state.selectedShopId = null; renderPanels(); });
+      document.getElementById('desk-tab-fav').addEventListener('click', () => { state.deskTab = 'fav'; state.selectedShopId = null; renderPanels(); });
+
+      document.getElementById('mob-tab-map').addEventListener('click', () => {
+        state.mobTab = 'map';
+        state.selectedShopId = null;
+        state.sheetExpanded = false;
+        renderPanels();
+      });
+      document.getElementById('mob-tab-list').addEventListener('click', () => {
+        state.mobTab = 'list';
+        state.selectedShopId = null;
+        state.sheetExpanded = false;
+        renderPanels();
+      });
+      document.getElementById('mob-tab-fav').addEventListener('click', () => {
+        state.mobTab = 'fav';
+        state.selectedShopId = null;
+        state.sheetExpanded = false;
+        renderPanels();
+      });
+      document.getElementById('toggle-sheet-expand').addEventListener('click', () => {
+        state.sheetExpanded = !state.sheetExpanded;
+        renderPanels();
+      });
+      document.getElementById('close-mobile-sheet').addEventListener('click', () => {
+        state.selectedShopId = null;
+        state.mobTab = 'map';
+        state.sheetExpanded = false;
+        renderAll();
+      });
+
       document.getElementById('fav-alarm-btn').addEventListener('click', () => {
         if (window.innerWidth >= 768) {
           state.deskTab = 'fav';
